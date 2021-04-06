@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+    <script src="./estimate.js" />
+    <script type="text/javascript">
+      // set the Pyodide files URL (packages.json, pyodide.asm.data etc)
+      window.languagePluginUrl =
+        "https://cdn.jsdelivr.net/pyodide/v0.17.0a2/full/";
+    </script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.17.0a2/full/pyodide.js"></script>
+  </head>
+  <body>
+    Pyodide test page <br />
+    Open your browser console to see Pyodide output
+    <div>
+      <button onclick="main()">Run</button>
+      <pre id="output" style="width: 100%">Initialzing...</pre>
+    </div>
+    <script type="text/javascript">
+      languagePluginLoader.then(function () {
+        const output = document.getElementById("output");
+        output.innerHTML = "Ready!";
+      });
+    </script>
+    <script>
+      console.log("main", main);
+    </script>
+  </body>
+</html>
