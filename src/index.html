@@ -11,20 +11,21 @@
     <script src="https://cdn.jsdelivr.net/pyodide/v0.17.0a2/full/pyodide.js"></script>
   </head>
   <body>
-    Pyodide test page <br />
-    Open your browser console to see Pyodide output
-    <div>
-      <button onclick="main()">Run</button>
-      <pre id="output" style="width: 100%">Initialzing...</pre>
-    </div>
+    <div id="content">Loading...</div>
     <script type="text/javascript">
-      languagePluginLoader.then(function () {
-        const output = document.getElementById("output");
-        output.innerHTML = "Ready!";
-      });
-    </script>
-    <script>
-      console.log("main", main);
+      languagePluginLoader
+        .then(() => {
+          return pyodide.loadPackage(["scipy", "micropip"]);
+        })
+        .then(function () {
+          const content = document.getElementById("content");
+          content.innerHTML = `
+                <div>
+                <button onclick="main()">Run</button>
+                <pre id="output" style="width: 100%" ></pre>
+                </div>
+                `;
+        });
     </script>
   </body>
 </html>
