@@ -118,9 +118,7 @@ fmt.text(calc.compute(${activeRolls},
 
         <div className="field is-horizontal m-2">
           <div className="field-label is-normal">
-            <label className="label" style={{ visibility: "hidden" }}>
-              -
-            </label>
+            <label className="label is-invisible">-</label>
           </div>
           <div className="control">
             <a className="button is-info" onClick={run}>
