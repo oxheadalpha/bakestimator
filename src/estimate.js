@@ -76,31 +76,59 @@ fmt.text(calc.compute(${activeRolls},
   };
 
   return (
-    <div>
-      <div style={styles.formRow}>
-        <label>Rolls:</label>
-        <input
-          type="number"
-          value={rolls}
-          onChange={(e) => {
-            setRolls(e.target.value.toUpperCase());
-          }}
-        />
+    <div className="m-4">
+      <div className="field is-grouped">
+        <div className="field is-horizontal m-2">
+          <div className="field-label is-normal">
+            <label className="label">Network</label>
+          </div>
+          <div className="control">
+            <div className="select">
+              <select
+                onChange={(e) => {
+                  console.log(tzNetwork, e.target.value);
+                  setTzNetwork(e.target.value);
+                }}
+                value={tzNetwork}
+              >
+                <option>main</option>
+                <option>florence</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="field is-horizontal m-2">
+          <div className="field-label is-normal">
+            <label className="label">Rolls</label>
+          </div>
+          <div className="control">
+            <input
+              className="input"
+              type="number"
+              value={rolls}
+              maxLength={6}
+              style={{ maxWidth: 100 }}
+              onChange={(e) => {
+                setRolls(e.target.value.toUpperCase());
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="field is-horizontal m-2">
+          <div className="field-label is-normal">
+            <label className="label" style={{ visibility: "hidden" }}>
+              -
+            </label>
+          </div>
+          <div className="control">
+            <a className="button is-info" onClick={run}>
+              Calculate
+            </a>
+          </div>
+        </div>
       </div>
-      <div style={styles.formRow}>
-        <label>Network:</label>
-        <select
-          onChange={(e) => {
-            console.log(tzNetwork, e.target.value);
-            setTzNetwork(e.target.value);
-          }}
-          value={tzNetwork}
-        >
-          <option>main</option>
-          <option>florence</option>
-        </select>
-      </div>
-      <button onClick={run}>Calculate</button>
       <div>{message}</div>
       <pre>{calculationResult}</pre>
     </div>
