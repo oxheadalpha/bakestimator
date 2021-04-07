@@ -102,6 +102,9 @@ fmt.text(calc.compute(${activeRolls},
 
   return (
     <div className="m-4">
+      <h1 className="title">Baking Estimator</h1>
+      <h2 className="subtitle">Estimate Tezos baking rewards and deposits</h2>
+      <hr />
       <div className="field is-grouped">
         <div className="field is-horizontal m-2">
           <div className="field-label is-normal">
