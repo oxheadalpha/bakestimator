@@ -2,7 +2,21 @@
 <html>
   <head>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
-    <script src="./estimate.js" />
+    <script
+      src="https://unpkg.com/react@17/umd/react.production.min.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"
+      crossorigin
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script
+      src="./estimate.js"
+      type="text/babel"
+      data-presets="react"
+      data-type="module"
+    />
     <script type="text/javascript">
       // set the Pyodide files URL (packages.json, pyodide.asm.data etc)
       window.languagePluginUrl =
@@ -11,21 +25,6 @@
     <script src="https://cdn.jsdelivr.net/pyodide/v0.17.0a2/full/pyodide.js"></script>
   </head>
   <body>
-    <div id="content">Loading...</div>
-    <script type="text/javascript">
-      languagePluginLoader
-        .then(() => {
-          return pyodide.loadPackage(["scipy", "micropip"]);
-        })
-        .then(function () {
-          const content = document.getElementById("content");
-          content.innerHTML = `
-                <div>
-                <button onclick="main()">Run</button>
-                <pre id="output" style="width: 100%" ></pre>
-                </div>
-                `;
-        });
-    </script>
+    <div id="app"></div>
   </body>
 </html>
