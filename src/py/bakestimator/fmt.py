@@ -6,10 +6,15 @@ def text(result):
     ]
     for key in ["bakes", "endorsements", "total"]:
         output.append(key)
-        for key2 in ["mean", "max"]:
-            output.append(f"  {key2}")
-            d = result[key][key2]
-            for key3 in ["count", "deposits", "rewards"]:
-                output.append(f"    {key3:>8}: {d[key3]:.2f}")
+        col1 = "mean"
+        col2 = "max"
+        header = " " * 10 + f"{col1:>10} {col2:>10}"
+        output.append("-" * len(header))
+        output.append(header)
+        d = result[key]
+        for key2 in ["count", "deposits", "rewards"]:
+            mean = d["mean"][key2]
+            max = d["max"][key2]
+            output.append(f"{key2:>8}: {mean:10.2f} {max:10.2f}")
         output.append("\n")
     return "\n".join(output)
