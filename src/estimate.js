@@ -127,7 +127,10 @@ fmt.text(calc.compute(${activeRolls},
           </div>
         </div>
       </div>
-      <div>{message}</div>
+      <div className="mb-2">
+        <span className="is-invisible">-</span>
+        {message}
+      </div>
       <pre>{calculationResult}</pre>
     </div>
   );
