@@ -27,39 +27,46 @@ const fetchActiveRolls = async (network) => {
 const App = () => {
   const [rolls, setRolls] = React.useState("1");
   const [tzNetwork, setTzNetwork] = React.useState("main");
-  const [initializing, setInitializing] = React.useState(true);
   const [message, setMessage] = React.useState("");
+  const [errors, setErrors] = React.useState([]);
   const [calculationResult, setCalculationResult] = React.useState("");
+  const [running, setRunning] = React.useState(false);
+
+  const addError = (error) => {
+    setErrors([...errors, error]);
+  };
+
+  const deleteError = (index) => {
+    const newErrors = [...errors];
+    newErrors.splice(index, 1);
+    setErrors(newErrors);
+  };
 
   React.useEffect(() => {
-    languagePluginLoader
-      .then(
-        () => {
-          return pyodide.loadPackage(["scipy", "micropip"]);
-        },
-        (err) => {
-          console.error(err);
-        }
-      )
-      .then(() => {
-        setInitializing(false);
-      });
+    languagePluginLoader.then(
+      () => {
+        return pyodide.loadPackage(["scipy", "micropip"]);
+      },
+      (err) => {
+        console.error(err);
+        addError(err);
+      }
+    );
   }, []);
 
-  if (initializing) {
-    return <div>Initializing...</div>;
-  }
-
   const run = async () => {
-    setMessage("Fetching protocol constants...");
-    const constants = await fetchConstants(tzNetwork);
-    setMessage("Getting active roll count...");
-    const activeRolls = await fetchActiveRolls(tzNetwork);
-    setMessage("Calculating...");
-    console.log("constants", constants);
-    const preservedCycles = constants.preserved_cycles;
+    setErrors([]);
+    setRunning(true);
+    try {
+      setMessage("Fetching protocol constants...");
+      const constants = await fetchConstants(tzNetwork);
+      setMessage("Getting active roll count...");
+      const activeRolls = await fetchActiveRolls(tzNetwork);
+      setMessage("Calculating...");
+      console.log("constants", constants);
+      const preservedCycles = constants.preserved_cycles;
 
-    const code = `
+      const code = `
 import micropip
 await micropip.install('./py/dist/bakestimator-0.1-py3-none-any.whl')
 
@@ -70,10 +77,28 @@ fmt.text(calc.compute(${activeRolls},
          **calc.args_from_constants(${JSON.stringify(constants)})))
 `;
 
-    const result = await pyodide.runPythonAsync(code);
-    setMessage("");
-    setCalculationResult(result);
+      const result = await pyodide.runPythonAsync(code);
+      setCalculationResult(result);
+    } catch (err) {
+      addError(err);
+    } finally {
+      setMessage("");
+      setRunning(false);
+    }
   };
+
+  const handleRollsChange = (e) => {
+    setRolls(e.target.value);
+    setCalculationResult("");
+  };
+
+  const handleTzNetworkChange = (e) => {
+    setTzNetwork(e.target.value);
+    setCalculationResult("");
+  };
+
+  const rollsAsInt = parseInt(rolls);
+  const rollsInputValid = Number.isInteger(rollsAsInt) && rollsAsInt > 0;
 
   return (
     <div className="m-4">
@@ -84,13 +109,7 @@ fmt.text(calc.compute(${activeRolls},
           </div>
           <div className="control">
             <div className="select">
-              <select
-                onChange={(e) => {
-                  console.log(tzNetwork, e.target.value);
-                  setTzNetwork(e.target.value);
-                }}
-                value={tzNetwork}
-              >
+              <select onChange={handleTzNetworkChange} value={tzNetwork}>
                 <option>main</option>
                 <option>florence</option>
               </select>
@@ -104,14 +123,12 @@ fmt.text(calc.compute(${activeRolls},
           </div>
           <div className="control">
             <input
-              className="input"
+              className={`input ${rollsInputValid ? "" : "is-danger"}`}
               type="number"
               value={rolls}
               maxLength={6}
               style={{ maxWidth: 100 }}
-              onChange={(e) => {
-                setRolls(e.target.value.toUpperCase());
-              }}
+              onChange={handleRollsChange}
             />
           </div>
         </div>
@@ -121,7 +138,11 @@ fmt.text(calc.compute(${activeRolls},
             <label className="label is-invisible">-</label>
           </div>
           <div className="control">
-            <a className="button is-info" onClick={run}>
+            <a
+              className={`button is-info ${running ? "is-loading" : ""}`}
+              disabled={!rollsInputValid || running}
+              onClick={run}
+            >
               Calculate
             </a>
           </div>
@@ -131,7 +152,23 @@ fmt.text(calc.compute(${activeRolls},
         <span className="is-invisible">-</span>
         {message}
       </div>
-      <pre>{calculationResult}</pre>
+      {errors.map((error, i) => {
+        return (
+          <article className="message is-danger">
+            <div className="message-header">
+              <p>Error</p>
+              <button
+                className="delete"
+                aria-label="delete"
+                onClick={() => deleteError(i)}
+              ></button>
+            </div>
+            <div className="message-body">{error}</div>
+          </article>
+        );
+      })}
+
+      {calculationResult && <pre>{calculationResult}</pre>}
     </div>
   );
 };
