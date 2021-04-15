@@ -102,8 +102,33 @@ fmt.text(calc.compute(${activeRolls},
 
   return (
     <div className="m-4">
-      <h1 className="title">Baking Estimator</h1>
-      <h2 className="subtitle">Estimate Tezos baking rewards and deposits</h2>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div>
+          <h1 className="title">Baking Estimator</h1>
+          <h2 className="subtitle">
+            Estimate Tezos baking rewards and deposits
+          </h2>
+        </div>
+        <div className="is-flex is-flex-justify-content-end is-flex-wrap-wrap">
+          <a
+            href="https://tezos.gitlab.io/introduction/howtorun.html#deposits-and-over-delegation"
+            title="Link to Tezos documentation on over-delegation"
+          >
+            <span className="icon">
+              <img src="./school.svg" alt="Oxford cap" />
+            </span>
+          </a>
+          <div className="mr-2" />
+          <a
+            href="https://github.com/tqtezos/bakestimator"
+            title="Link to source code respository"
+          >
+            <span className="icon">
+              <img src="./github.svg" alt="Github Octocat" />
+            </span>
+          </a>
+        </div>
+      </div>
       <hr />
       <div className="field is-grouped">
         <div className="field is-horizontal m-2">
