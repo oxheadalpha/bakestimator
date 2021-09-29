@@ -5,26 +5,16 @@ const styles = {
 const rpcConstants = "/chains/main/blocks/head/context/constants";
 const rpcVotingPower = "/chains/main/blocks/head/votes/total_voting_power";
 
-const networks = {
-  main: "https://mainnet-tezos.giganode.io",
-  florence: "https://florence-tezos.giganode.io",
+const defaultNetworks = {
+  main: "https://mainnet.api.tez.ie",
 };
 
 const fetchJson = async (url) => {
   return await (await fetch(url)).json();
 };
 
-const fetchConstants = async (network) => {
-  const url = `${networks[network]}${rpcConstants}`;
-  return await fetchJson(url);
-};
-
-const fetchActiveRolls = async (network) => {
-  const url = `${networks[network]}${rpcVotingPower}`;
-  return await fetchJson(url);
-};
-
 const App = () => {
+  const [networks, setNetworks] = React.useState(defaultNetworks);
   const [rolls, setRolls] = React.useState("1");
   const [tzNetwork, setTzNetwork] = React.useState("main");
   const [message, setMessage] = React.useState("");
@@ -32,6 +22,16 @@ const App = () => {
   const [calculationResult, setCalculationResult] = React.useState("");
   const [running, setRunning] = React.useState(false);
   const [pyodideLoading, setPyodideLoading] = React.useState(null);
+
+  const fetchConstants = async (network) => {
+    const url = `${networks[network]}${rpcConstants}`;
+    return await fetchJson(url);
+  };
+
+  const fetchActiveRolls = async (network) => {
+    const url = `${networks[network]}${rpcVotingPower}`;
+    return await fetchJson(url);
+  };
 
   const addError = (error) => {
     setErrors([...errors, error]);
@@ -58,6 +58,29 @@ const App = () => {
       }
     );
     setPyodideLoading(pyodidePromise);
+
+    (async () => {
+      try {
+        const testNets = await fetchJson("https://teztnets.xyz/teztnets.json");
+        console.debug("Got testnet data", testNets);
+        const networks = { ...defaultNetworks };
+        for (const group of Object.values(testNets)) {
+          for (const [networkName, data] of Object.entries(group)) {
+            if (data.rpc_url) {
+              networks[networkName] = data.rpc_url;
+            } else {
+              console.warn(
+                `Network ${networkName} has no rpc URL, skipping`,
+                data
+              );
+            }
+          }
+        }
+        setNetworks(networks);
+      } catch (err) {
+        console.error("Failed to fetch test networks info", err);
+      }
+    })();
   }, []);
 
   const run = async () => {
@@ -77,8 +100,8 @@ import micropip
 await micropip.install('./py/dist/bakestimator-0.1-py3-none-any.whl')
 
 from bakestimator import calc, fmt
-fmt.text(calc.compute(${activeRolls}, 
-         baking_rolls=${rolls}, 
+fmt.text(calc.compute(${activeRolls},
+         baking_rolls=${rolls},
          cycles=${preservedCycles},
          **calc.args_from_constants(${JSON.stringify(constants)})))
 `;
@@ -146,7 +169,11 @@ fmt.text(calc.compute(${activeRolls},
             <div className="select">
               <select onChange={handleTzNetworkChange} value={tzNetwork}>
                 <option>main</option>
-                <option>florence</option>
+                {Object.keys(networks)
+                  .filter((n) => n !== "main")
+                  .map((n) => (
+                    <option key={n}>{n}</option>
+                  ))}
               </select>
             </div>
           </div>
