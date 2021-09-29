@@ -31,6 +31,7 @@ const App = () => {
   const [errors, setErrors] = React.useState([]);
   const [calculationResult, setCalculationResult] = React.useState("");
   const [running, setRunning] = React.useState(false);
+  const [pyodideLoading, setPyodideLoading] = React.useState(null);
 
   const addError = (error) => {
     setErrors([...errors, error]);
@@ -43,15 +44,20 @@ const App = () => {
   };
 
   React.useEffect(() => {
-    languagePluginLoader.then(
-      () => {
-        return pyodide.loadPackage(["scipy", "micropip"]);
+    const pyodidePromise = loadPyodide({
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.18.1/full/",
+    });
+    pyodidePromise.then(
+      (pyodide) => {
+        pyodide.loadPackage(["scipy", "micropip"]);
+        return pyodide;
       },
       (err) => {
         console.error(err);
         addError(err);
       }
     );
+    setPyodideLoading(pyodidePromise);
   }, []);
 
   const run = async () => {
@@ -77,6 +83,7 @@ fmt.text(calc.compute(${activeRolls},
          **calc.args_from_constants(${JSON.stringify(constants)})))
 `;
 
+      const pyodide = await pyodideLoading;
       const result = await pyodide.runPythonAsync(code);
       setCalculationResult(result);
     } catch (err) {
