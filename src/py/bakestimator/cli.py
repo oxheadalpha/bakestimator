@@ -17,16 +17,12 @@ def fetch_active_rolls(tezos_rpc_url):
     return requests.get(f"{tezos_rpc_url}/{RPC_ACTIVE_ROLLS}").json()
 
 
-NETWORKS = {
-    "main": "https://mainnet-tezos.giganode.io",
-    "florence": "https://florence-tezos.giganode.io",
-}
-
-
-def network_name_to_rpc(network_name):
-    url = NETWORKS.get(network_name)
+def network_name_to_rpc(networks, network_name):
+    url = networks.get(network_name)
     if url is None:
-        raise Exception("Unknown network")
+        raise Exception(
+            f"Unknown network. Network must be one of: {sorted(networks.keys())}"
+        )
     return url
 
 
@@ -54,8 +50,7 @@ def parse_args():
     p.add_argument(
         "-n",
         "--network",
-        default="main",
-        choices=NETWORKS.keys(),
+        default="mainnet",
         help="name of Tezos network. Default: %(default)s",
     )
     p.add_argument(
@@ -66,9 +61,29 @@ def parse_args():
     return p.parse_args()
 
 
+def fetch_test_networks():
+    testnets_info_url = "https://teztnets.xyz/teztnets.json"
+    name2rpc = {}
+    try:
+        testnets = requests.get(testnets_info_url).json()
+    except err:
+        print(f"Failed to get testnet info from {testnets_info_url}")
+    else:
+        for (key, net) in testnets.items():
+            if "rpc_url" not in net:
+                print(f"rpc url not provided for {key}, skipping")
+            else:
+                name2rpc[net.get("human_name", key).lower()] = net["rpc_url"]
+                name2rpc[key] = net["rpc_url"]
+    return name2rpc
+
+
 def main():
     args = parse_args()
-    rpc = args.rpc or network_name_to_rpc(args.network)
+    rpc = args.rpc or network_name_to_rpc(
+        dict(mainnet="https://mainnet.api.tez.ie", **fetch_test_networks()),
+        args.network.lower(),
+    )
     constants = fetch_constants(rpc)
     active_rolls = fetch_active_rolls(rpc)
     preserved_cycles = constants["preserved_cycles"]
