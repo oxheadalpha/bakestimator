@@ -1,4 +1,4 @@
-`bakestimator` is a utility to estimate Tezos baking
+`bakestimator` is a utility to estimate [Tezos](https://tezos.com/) baking
 rewards and deposits based on selected network's current protocol
 constants and active roll count.
 
@@ -16,7 +16,7 @@ memory"](https://github.com/pyodide/pyodide/issues/1513) or other
 errors. If that happens, try another browser or use command line
 version.
 
-Command line version can be installed via pip:
+Command line version can be installed via [pip](https://pip.pypa.io/en/stable/installation/):
 
 ```
 pip install git+https://github.com/oxheadalpha/bakestimator.git#subdirectory=src/py
