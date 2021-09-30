@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+ORIGIN=$(git config --get remote.origin.url)
+git clone . ./gh-pages && \
+    (cd ./gh-pages && \
+	 echo ${PWD} && \
+	 git config remote.origin.url ${ORIGIN} && \
+	 git pull && \
+	 git checkout gh-pages && \
+	 find ../src/* -type f -maxdepth 0 -exec cp '{}' . ';' && \
+	 cp ../src/py/dist/bakestimator-*.whl ./py/dist/)
