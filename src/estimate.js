@@ -94,6 +94,8 @@ const App = () => {
     })();
   }, []);
 
+  const confidence = 0.9;
+
   const run = async () => {
     setErrors([]);
     setRunning(true);
@@ -113,6 +115,7 @@ await micropip.install('./py/dist/bakestimator-0.1-py3-none-any.whl')
 from bakestimator import calc, fmt
 fmt.text(calc.compute(${activeRolls},
          baking_rolls=${rolls},
+         confidence=${confidence},
          cycles=${preservedCycles},
          **calc.args_from_constants(${JSON.stringify(constants)})))
 `;
@@ -249,7 +252,14 @@ fmt.text(calc.compute(${activeRolls},
         );
       })}
 
-      {calculationResult && <pre>{calculationResult}</pre>}
+      {calculationResult && (
+        <div>
+          <pre>{calculationResult}</pre>
+          <div className="is-size-7">
+            max values are calculated at {confidence * 100}% confidence
+          </div>
+        </div>
+      )}
     </div>
   );
 };
