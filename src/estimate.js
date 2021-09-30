@@ -161,6 +161,15 @@ fmt.text(calc.compute(${activeRolls},
           </a>
           <div className="mr-2" />
           <a
+            href="https://teztnets.xyz/"
+            title="Link to Tezos testnets catalog"
+          >
+            <span className="icon">
+              <img src="./lan.svg" alt="Computer Network" />
+            </span>
+          </a>
+          <div className="mr-2" />
+          <a
             href="https://github.com/tqtezos/bakestimator"
             title="Link to source code respository"
           >
