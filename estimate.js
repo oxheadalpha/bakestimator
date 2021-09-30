@@ -5,32 +5,43 @@ const styles = {
 const rpcConstants = "/chains/main/blocks/head/context/constants";
 const rpcVotingPower = "/chains/main/blocks/head/votes/total_voting_power";
 
-const networks = {
-  main: "https://mainnet-tezos.giganode.io",
-  florence: "https://florence-tezos.giganode.io",
+const MAINNET = "mainnet";
+
+const defaultNetworks = {
+  [MAINNET]: { rpc: "https://mainnet.api.tez.ie", sortOrder: 0 },
 };
 
 const fetchJson = async (url) => {
   return await (await fetch(url)).json();
 };
 
-const fetchConstants = async (network) => {
-  const url = `${networks[network]}${rpcConstants}`;
-  return await fetchJson(url);
-};
-
-const fetchActiveRolls = async (network) => {
-  const url = `${networks[network]}${rpcVotingPower}`;
-  return await fetchJson(url);
-};
-
 const App = () => {
+  const [networks, setNetworks] = React.useState(defaultNetworks);
   const [rolls, setRolls] = React.useState("1");
-  const [tzNetwork, setTzNetwork] = React.useState("main");
+  const [tzNetwork, setTzNetwork] = React.useState(MAINNET);
   const [message, setMessage] = React.useState("");
   const [errors, setErrors] = React.useState([]);
   const [calculationResult, setCalculationResult] = React.useState("");
   const [running, setRunning] = React.useState(false);
+  const [pyodideLoading, setPyodideLoading] = React.useState(null);
+
+  const fetchConstants = async (network) => {
+    const url = `${networks[network].rpc}${rpcConstants}`;
+    return await fetchJson(url);
+  };
+
+  const fetchActiveRolls = async (network) => {
+    const url = `${networks[network].rpc}${rpcVotingPower}`;
+    return await fetchJson(url);
+  };
+
+  const networkNameCompare = (a, b) => {
+    const na = networks[a];
+    const nb = networks[b];
+    const sa = na.sortOrder;
+    const sb = nb.sortOrder;
+    return sa === sb ? -a.localeCompare(b) : sa - sb;
+  };
 
   const addError = (error) => {
     setErrors([...errors, error]);
@@ -43,16 +54,47 @@ const App = () => {
   };
 
   React.useEffect(() => {
-    languagePluginLoader.then(
-      () => {
-        return pyodide.loadPackage(["scipy", "micropip"]);
+    const pyodidePromise = loadPyodide({
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.17.0/full/",
+    });
+    pyodidePromise.then(
+      (pyodide) => {
+        pyodide.loadPackage(["scipy", "micropip"]);
+        return pyodide;
       },
       (err) => {
         console.error(err);
         addError(err);
       }
     );
+    setPyodideLoading(pyodidePromise);
+
+    (async () => {
+      try {
+        const testNets = await fetchJson("https://teztnets.xyz/teztnets.json");
+        console.debug("Got testnet data", testNets);
+        const networks = { ...defaultNetworks };
+        for (const [networkName, data] of Object.entries(testNets)) {
+          if (data.rpc_url) {
+            networks[networkName] = {
+              rpc: data.rpc_url,
+              sortOrder: data.category === "Long-Running Teztnets" ? 1 : 2,
+            };
+          } else {
+            console.warn(
+              `Network ${networkName} has no rpc URL, skipping`,
+              data
+            );
+          }
+        }
+        setNetworks(networks);
+      } catch (err) {
+        console.error("Failed to fetch test networks info", err);
+      }
+    })();
   }, []);
+
+  const confidence = 0.9;
 
   const run = async () => {
     setErrors([]);
@@ -71,12 +113,14 @@ import micropip
 await micropip.install('./py/dist/bakestimator-0.1-py3-none-any.whl')
 
 from bakestimator import calc, fmt
-fmt.text(calc.compute(${activeRolls}, 
-         baking_rolls=${rolls}, 
+fmt.text(calc.compute(${activeRolls},
+         baking_rolls=${rolls},
+         confidence=${confidence},
          cycles=${preservedCycles},
          **calc.args_from_constants(${JSON.stringify(constants)})))
 `;
 
+      const pyodide = await pyodideLoading;
       const result = await pyodide.runPythonAsync(code);
       setCalculationResult(result);
     } catch (err) {
@@ -120,6 +164,15 @@ fmt.text(calc.compute(${activeRolls},
           </a>
           <div className="mr-2" />
           <a
+            href="https://teztnets.xyz/"
+            title="Link to Tezos testnets catalog"
+          >
+            <span className="icon">
+              <img src="./lan.svg" alt="Computer Network" />
+            </span>
+          </a>
+          <div className="mr-2" />
+          <a
             href="https://github.com/tqtezos/bakestimator"
             title="Link to source code respository"
           >
@@ -138,8 +191,11 @@ fmt.text(calc.compute(${activeRolls},
           <div className="control">
             <div className="select">
               <select onChange={handleTzNetworkChange} value={tzNetwork}>
-                <option>main</option>
-                <option>florence</option>
+                {Object.keys(networks)
+                  .sort(networkNameCompare)
+                  .map((n) => (
+                    <option key={n}>{n}</option>
+                  ))}
               </select>
             </div>
           </div>
@@ -196,7 +252,14 @@ fmt.text(calc.compute(${activeRolls},
         );
       })}
 
-      {calculationResult && <pre>{calculationResult}</pre>}
+      {calculationResult && (
+        <div>
+          <pre>{calculationResult}</pre>
+          <div className="is-size-7">
+            max values are calculated at {confidence * 100}% confidence
+          </div>
+        </div>
+      )}
     </div>
   );
 };
