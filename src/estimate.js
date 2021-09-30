@@ -5,8 +5,10 @@ const styles = {
 const rpcConstants = "/chains/main/blocks/head/context/constants";
 const rpcVotingPower = "/chains/main/blocks/head/votes/total_voting_power";
 
+const MAINNET = "mainnet";
+
 const defaultNetworks = {
-  main: "https://mainnet.api.tez.ie",
+  [MAINNET]: { rpc: "https://mainnet.api.tez.ie", sortOrder: 0 },
 };
 
 const fetchJson = async (url) => {
@@ -16,7 +18,7 @@ const fetchJson = async (url) => {
 const App = () => {
   const [networks, setNetworks] = React.useState(defaultNetworks);
   const [rolls, setRolls] = React.useState("1");
-  const [tzNetwork, setTzNetwork] = React.useState("main");
+  const [tzNetwork, setTzNetwork] = React.useState(MAINNET);
   const [message, setMessage] = React.useState("");
   const [errors, setErrors] = React.useState([]);
   const [calculationResult, setCalculationResult] = React.useState("");
@@ -24,13 +26,21 @@ const App = () => {
   const [pyodideLoading, setPyodideLoading] = React.useState(null);
 
   const fetchConstants = async (network) => {
-    const url = `${networks[network]}${rpcConstants}`;
+    const url = `${networks[network].rpc}${rpcConstants}`;
     return await fetchJson(url);
   };
 
   const fetchActiveRolls = async (network) => {
-    const url = `${networks[network]}${rpcVotingPower}`;
+    const url = `${networks[network].rpc}${rpcVotingPower}`;
     return await fetchJson(url);
+  };
+
+  const networkNameCompare = (a, b) => {
+    const na = networks[a];
+    const nb = networks[b];
+    const sa = na.sortOrder;
+    const sb = nb.sortOrder;
+    return sa === sb ? -a.localeCompare(b) : sa - sb;
   };
 
   const addError = (error) => {
@@ -64,16 +74,17 @@ const App = () => {
         const testNets = await fetchJson("https://teztnets.xyz/teztnets.json");
         console.debug("Got testnet data", testNets);
         const networks = { ...defaultNetworks };
-        for (const group of Object.values(testNets)) {
-          for (const [networkName, data] of Object.entries(group)) {
-            if (data.rpc_url) {
-              networks[networkName] = data.rpc_url;
-            } else {
-              console.warn(
-                `Network ${networkName} has no rpc URL, skipping`,
-                data
-              );
-            }
+        for (const [networkName, data] of Object.entries(testNets)) {
+          if (data.rpc_url) {
+            networks[networkName] = {
+              rpc: data.rpc_url,
+              sortOrder: data.category === "Long-Running Teztnets" ? 1 : 2,
+            };
+          } else {
+            console.warn(
+              `Network ${networkName} has no rpc URL, skipping`,
+              data
+            );
           }
         }
         setNetworks(networks);
@@ -168,9 +179,8 @@ fmt.text(calc.compute(${activeRolls},
           <div className="control">
             <div className="select">
               <select onChange={handleTzNetworkChange} value={tzNetwork}>
-                <option>main</option>
                 {Object.keys(networks)
-                  .filter((n) => n !== "main")
+                  .sort(networkNameCompare)
                   .map((n) => (
                     <option key={n}>{n}</option>
                   ))}
