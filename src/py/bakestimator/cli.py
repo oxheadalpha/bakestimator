@@ -33,20 +33,61 @@ def parse_args():
         "-c",
         "--cycles",
         type=int,
-        help=(
-            "Calculate estimates for this number of cycles. "
-            "By default estimates are calculated for "
-            "preserved_cycles for selected network"
-        ),
+        default=1,
+        help=("Calculate estimates for this number of cycles. Default: %(default)s"),
     )
     p.add_argument(
         "-r",
         "--rolls",
         default=1,
         type=int,
-        help="Calculate estimates for this number of rolls of tez used for baking",
+        help=(
+            "[emmy] Calculate estimates for this number of rolls of tez used for baking "
+            "Default: %(default)s"
+        ),
     )
-    p.add_argument("--confidence", default=0.9, type=float)
+    p.add_argument(
+        "-b",
+        "--full-balance",
+        default=6000.0,
+        type=float,
+        help=(
+            "[tenderbake] Calculate estimates using this number as baker's full balance. "
+            "Default: %(default)s"
+        ),
+    )
+    p.add_argument(
+        "-D",
+        "--deposit-limit",
+        default=None,
+        type=float,
+        help=(
+            "[tenderbake] Calculate estimates with this deposit limit. "
+            "If not specified, max deposit if baker's full balance. "
+            "Default: %(default)s"
+        ),
+    )
+
+    p.add_argument(
+        "-d",
+        "--delegated-balance",
+        default=0.0,
+        type=float,
+        help=(
+            "[tenderbake] Calculate estimates assuming this delegated balance. "
+            "Default: %(default)s"
+        ),
+    )
+
+    p.add_argument(
+        "--confidence",
+        default=0.9,
+        type=float,
+        help=(
+            "Probability that calculated max values are not exceeded. "
+            "Default: %(default)s"
+        ),
+    )
     p.add_argument(
         "-n",
         "--network",
@@ -91,13 +132,33 @@ def main():
     print(f"preserved cycles: {preserved_cycles}")
     print(f"roll size: {roll_size//calc.MUTEZ}")
     print()
-    args_from_constants = calc.args_from_constants(constants)
 
-    result = calc.compute(
-        active_rolls,
-        cycles=args.cycles or preserved_cycles,
-        baking_rolls=args.rolls,
-        confidence=args.confidence,
-        **args_from_constants,
-    )
-    print(fmt.text(result))
+    if "frozen_deposits_percentage" in constants:
+        args_from_constants = calc.tenderbake_args_from_constants(constants)
+        total_active_stake = active_rolls * roll_size
+        print(f"total active stake: {active_rolls/calc.MUTEZ}ꜩ")
+        full_balance = args.full_balance
+        delegated_balance = args.delegated_balance
+        staking_balance = full_balance + delegated_balance
+        deposit_cap = args.deposit_limit or full_balance
+        result = calc.tenderbake_compute(
+            total_active_stake,
+            staking_balance * calc.MUTEZ,
+            deposit_cap=deposit_cap * calc.MUTEZ,
+            cycles=args.cycles,
+            confidence=args.confidence,
+            **args_from_constants,
+        )
+        print(fmt.tenderbake(result))
+
+    else:
+        print(f"active rolls: {active_rolls}")
+        args_from_constants = calc.emmy_args_from_constants(constants)
+        result = calc.emmy_compute(
+            active_rolls,
+            cycles=args.cycles,
+            baking_rolls=args.rolls,
+            confidence=args.confidence,
+            **args_from_constants,
+        )
+        print(fmt.emmy(result))
