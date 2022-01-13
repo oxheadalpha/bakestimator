@@ -66,7 +66,7 @@ def fetch_test_networks():
     name2rpc = {}
     try:
         testnets = requests.get(testnets_info_url).json()
-    except err:
+    except Exception:
         print(f"Failed to get testnet info from {testnets_info_url}")
     else:
         for (key, net) in testnets.items():
