@@ -136,7 +136,7 @@ def main():
     if "frozen_deposits_percentage" in constants:
         args_from_constants = calc.tenderbake_args_from_constants(constants)
         total_active_stake = active_rolls * roll_size
-        print(f"total active stake: {active_rolls/calc.MUTEZ}ꜩ")
+        print(f"total active stake: {total_active_stake/calc.MUTEZ}ꜩ")
         full_balance = args.full_balance
         delegated_balance = args.delegated_balance
         staking_balance = full_balance + delegated_balance
