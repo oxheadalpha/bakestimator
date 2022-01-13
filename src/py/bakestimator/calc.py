@@ -46,7 +46,7 @@ def compute(
     b_mean = mean_for_n(block_count)
     b_max = max_for_n(block_count)
 
-    endorsement_count = blocks_per_cycle * endorsers_per_block * cycles
+    endorsement_count = block_count * endorsers_per_block
     e_mean = mean_for_n(endorsement_count)
     e_max = max_for_n(endorsement_count)
 
