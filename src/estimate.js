@@ -55,7 +55,7 @@ const App = () => {
 
   React.useEffect(() => {
     const pyodidePromise = loadPyodide({
-      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.17.0/full/",
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.18.1/full/",
     });
     pyodidePromise.then(
       (pyodide) => {
