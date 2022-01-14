@@ -114,7 +114,12 @@ const App = () => {
       const delegatedBalance = 0;
       const stakingBalance = fullBalance + delegatedBalance;
       const depositCap = fullBalance;
-      const constantsJSON = JSON.stringify(constants);
+      const constantsPyCode = JSON.stringify(constants)
+        .replaceAll("true", "True")
+        .replaceAll("false", "False")
+        .replaceAll("null", "None");
+
+      console.log(constants);
 
       const loadWheelCode = `
 import micropip
@@ -127,7 +132,7 @@ from bakestimator import calc, fmt
       if (constants.frozen_deposits_percentage) {
         code = `
 ${loadWheelCode}
-args = calc.tenderbake_args_from_constants(${constantsJSON})
+args = calc.tenderbake_args_from_constants(${constantsPyCode})
 
 result = calc.tenderbake_compute(
         ${totalActiveStake},
@@ -141,7 +146,7 @@ fmt.tenderbake(result)
       } else {
         code = `
 ${loadWheelCode}
-args = calc.emmy_args_from_constants(${constantsJSON})
+args = calc.emmy_args_from_constants(${constantsPyCode})
 result = calc.emmy_compute(${activeRolls},
         baking_rolls=${rolls},
         confidence=${confidence},
