@@ -108,17 +108,48 @@ const App = () => {
       console.log("constants", constants);
       const preservedCycles = constants.preserved_cycles;
 
-      const code = `
+      const tokensPerRoll = parseInt(constants.tokens_per_roll);
+      const totalActiveStake = activeRolls * tokensPerRoll;
+      const fullBalance = 8000;
+      const delegatedBalance = 0;
+      const stakingBalance = fullBalance + delegatedBalance;
+      const depositCap = fullBalance;
+      const constantsJSON = JSON.stringify(constants);
+
+      const loadWheelCode = `
 import micropip
-await micropip.install('./py/dist/bakestimator-0.1-py3-none-any.whl')
+await micropip.install('./py/dist/bakestimator-0.2-py3-none-any.whl')
 
 from bakestimator import calc, fmt
-fmt.text(calc.compute(${activeRolls},
-         baking_rolls=${rolls},
-         confidence=${confidence},
-         cycles=${preservedCycles},
-         **calc.args_from_constants(${JSON.stringify(constants)})))
+      `;
+      let code = null;
+
+      if (constants.frozen_deposits_percentage) {
+        code = `
+${loadWheelCode}
+args = calc.tenderbake_args_from_constants(${constantsJSON})
+
+result = calc.tenderbake_compute(
+        ${totalActiveStake},
+        ${stakingBalance * 1e6},
+        ${depositCap * 1e6},
+        confidence=${confidence},
+        cycles=${preservedCycles},
+        **args)
+fmt.tenderbake(result)
 `;
+      } else {
+        code = `
+${loadWheelCode}
+args = calc.emmy_args_from_constants(${constantsJSON})
+result = calc.emmy_compute(${activeRolls},
+        baking_rolls=${rolls},
+        confidence=${confidence},
+        cycles=${preservedCycles},
+        **args)
+fmt.emmy(result)
+`;
+      }
 
       const pyodide = await pyodideLoading;
       const result = await pyodide.runPythonAsync(code);
