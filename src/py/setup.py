@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="bakestimator",
-    version="0.1",
+    version="0.2",
     author="Igor Tkach",
     author_email="itkach@gmail.com",
     description="Utility to calculate estimated baking rewards and required deposits on Tezos",
