@@ -18,12 +18,17 @@ const fetchJson = async (url) => {
 const App = () => {
   const [networks, setNetworks] = React.useState(defaultNetworks);
   const [rolls, setRolls] = React.useState("1");
+  const [fullBalance, setFullBalance] = React.useState("6000");
+  const [delegatedBalance, setDelegatedBalance] = React.useState("0");
   const [tzNetwork, setTzNetwork] = React.useState(MAINNET);
   const [message, setMessage] = React.useState("");
   const [errors, setErrors] = React.useState([]);
   const [calculationResult, setCalculationResult] = React.useState("");
   const [running, setRunning] = React.useState(false);
   const [pyodideLoading, setPyodideLoading] = React.useState(null);
+  const [constants, setConstants] = React.useState(null);
+
+  const isTenderbake = () => constants && constants.frozen_deposits_percentage;
 
   const fetchConstants = async (network) => {
     const url = `${networks[network].rpc}${rpcConstants}`;
@@ -52,6 +57,25 @@ const App = () => {
     newErrors.splice(index, 1);
     setErrors(newErrors);
   };
+
+  React.useEffect(() => {
+    (async () => {
+      setConstants(null);
+      setRunning(true);
+      setMessage("Fetching protocol constants...");
+      try {
+        const constants = await fetchConstants(tzNetwork);
+        setConstants(constants);
+        setMessage("");
+      } catch (err) {
+        console.error(err);
+        setMessage("Failed to fetch protocol constants");
+        addError(err.getMessage());
+      } finally {
+        setRunning(false);
+      }
+    })();
+  }, [networks, tzNetwork]);
 
   React.useEffect(() => {
     const pyodidePromise = loadPyodide({
@@ -101,7 +125,7 @@ const App = () => {
     setRunning(true);
     try {
       setMessage("Fetching protocol constants...");
-      const constants = await fetchConstants(tzNetwork);
+      //const constants = await fetchConstants(tzNetwork);
       setMessage("Getting active roll count...");
       const activeRolls = await fetchActiveRolls(tzNetwork);
       setMessage("Calculating...");
@@ -110,10 +134,11 @@ const App = () => {
 
       const tokensPerRoll = parseInt(constants.tokens_per_roll);
       const totalActiveStake = activeRolls * tokensPerRoll;
-      const fullBalance = 8000;
-      const delegatedBalance = 0;
-      const stakingBalance = fullBalance + delegatedBalance;
-      const depositCap = fullBalance;
+      const stakingBalance = fullBalanceAsFloat + delegatedBalanceAsFloat;
+      const depositCap = fullBalanceAsFloat;
+
+      console.log(fullBalance, delegatedBalance, stakingBalance);
+
       const constantsPyCode = JSON.stringify(constants)
         .replaceAll("true", "True")
         .replaceAll("false", "False")
@@ -129,7 +154,7 @@ from bakestimator import calc, fmt
       `;
       let code = null;
 
-      if (constants.frozen_deposits_percentage) {
+      if (isTenderbake()) {
         code = `
 ${loadWheelCode}
 args = calc.tenderbake_args_from_constants(${constantsPyCode})
@@ -172,13 +197,31 @@ fmt.emmy(result)
     setCalculationResult("");
   };
 
+  const handleFullBalanceChange = (e) => {
+    setFullBalance(e.target.value);
+    setCalculationResult("");
+  };
+
+  const handleDelegatedBalanceChange = (e) => {
+    setDelegatedBalance(e.target.value);
+    setCalculationResult("");
+  };
+
   const handleTzNetworkChange = (e) => {
     setTzNetwork(e.target.value);
     setCalculationResult("");
   };
 
+  const isValidBalance = (value, min = 0) =>
+    typeof value === "number" && value >= min;
+
   const rollsAsInt = parseInt(rolls);
   const rollsInputValid = Number.isInteger(rollsAsInt) && rollsAsInt > 0;
+  const fullBalanceAsFloat = parseFloat(fullBalance);
+  const fullBalanceInputValid = isValidBalance(fullBalanceAsFloat, 6000);
+
+  const delegatedBalanceAsFloat = parseFloat(delegatedBalance);
+  const delegatedBalanceInputValid = isValidBalance(delegatedBalanceAsFloat);
 
   return (
     <div className="m-4">
@@ -237,21 +280,23 @@ fmt.emmy(result)
           </div>
         </div>
 
-        <div className="field is-horizontal m-2">
-          <div className="field-label is-normal">
-            <label className="label">Rolls</label>
+        {!isTenderbake() && (
+          <div className="field is-horizontal m-2">
+            <div className="field-label is-normal">
+              <label className="label">Rolls</label>
+            </div>
+            <div className="control">
+              <input
+                className={`input ${rollsInputValid ? "" : "is-danger"}`}
+                type="number"
+                value={rolls}
+                maxLength={6}
+                style={{ maxWidth: 100 }}
+                onChange={handleRollsChange}
+              />
+            </div>
           </div>
-          <div className="control">
-            <input
-              className={`input ${rollsInputValid ? "" : "is-danger"}`}
-              type="number"
-              value={rolls}
-              maxLength={6}
-              style={{ maxWidth: 100 }}
-              onChange={handleRollsChange}
-            />
-          </div>
-        </div>
+        )}
 
         <div className="field is-horizontal m-2">
           <div className="field-label is-normal">
@@ -260,7 +305,7 @@ fmt.emmy(result)
           <div className="control">
             <a
               className={`button is-info ${running ? "is-loading" : ""}`}
-              disabled={!rollsInputValid || running}
+              disabled={!rollsInputValid || running || !constants}
               onClick={run}
             >
               Calculate
@@ -268,6 +313,45 @@ fmt.emmy(result)
           </div>
         </div>
       </div>
+
+      {isTenderbake() && (
+        <div className="field is-grouped">
+          <div className="field is-horizontal m-2">
+            <div className="field-label is-normal">
+              <label className="label">Full Balance</label>
+            </div>
+            <div className="control">
+              <input
+                className={`input ${fullBalanceInputValid ? "" : "is-danger"}`}
+                type="number"
+                value={fullBalance}
+                maxLength={6}
+                style={{ maxWidth: 100 }}
+                onChange={handleFullBalanceChange}
+              />
+            </div>
+          </div>
+
+          <div className="field is-horizontal m-2">
+            <div className="field-label is-normal">
+              <label className="label">Delegated Balance</label>
+            </div>
+            <div className="control">
+              <input
+                className={`input ${
+                  delegatedBalanceInputValid ? "" : "is-danger"
+                }`}
+                type="number"
+                value={delegatedBalance}
+                maxLength={6}
+                style={{ maxWidth: 100 }}
+                onChange={handleDelegatedBalanceChange}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-2">
         <span className="is-invisible">-</span>
         {message}
