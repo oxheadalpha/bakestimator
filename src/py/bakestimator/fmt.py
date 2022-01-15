@@ -24,7 +24,7 @@ def emmy(result):
 
 
 def fmt_rewards_range(values: Iterable):
-    return "..".join("{0:.2f}".format(v) for v in values)
+    return " - ".join("{0:.1f}".format(v) for v in values)
 
 
 def fmt_count(value: float):
@@ -42,7 +42,7 @@ def tenderbake(result):
     output.append(key1)
     col1 = "mean"
     col2 = "max"
-    bakes_header = " " * 10 + f"{col1:>14} {col2:>14}"
+    bakes_header = " " * 10 + f"{col1:>16} {col2:>16}"
     output.append("-" * len(bakes_header))
     output.append(bakes_header)
     d = result[key1]
@@ -50,13 +50,13 @@ def tenderbake(result):
     key2 = "count"
     count_mean = d[col1][key2]
     count_max = d[col2][key2]
-    output.append(f"{key2:>8}: {fmt_count(count_mean):>14} {fmt_count(count_max):>14}")
+    output.append(f"{key2:>8}: {fmt_count(count_mean):>16} {fmt_count(count_max):>16}")
 
     key2 = "rewards"
     rewards_mean = d[col1][key2]
     rewards_max = d[col2][key2]
     output.append(
-        f"{key2:>8}: {fmt_rewards_range(rewards_mean):>14}ꜩ{fmt_rewards_range(rewards_max):>14}ꜩ"
+        f"{key2:>8}: {fmt_rewards_range(rewards_mean):>16}ꜩ{fmt_rewards_range(rewards_max):>16}ꜩ"
     )
     output.append("\n")
 
@@ -67,10 +67,10 @@ def tenderbake(result):
 
     key2 = "count"
     count = d[key2]
-    output.append(f"{key2:>8}: {fmt_count(count):>14}")
+    output.append(f"{key2:>8}: {fmt_count(count):>16}")
     key2 = "rewards"
     rewards = d[key2]
-    output.append(f"{key2:>8}: {rewards:14.2f}ꜩ")
+    output.append(f"{key2:>8}: {rewards:16.1f}ꜩ")
     output.append("\n")
 
     return "\n".join(output)
