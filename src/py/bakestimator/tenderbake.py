@@ -1,110 +1,8 @@
+from collections.abc import Iterable
+
 from scipy.stats import binom
 
 MUTEZ = 1000000
-
-
-def emmy_args_from_constants(constants):
-    return dict(
-        blocks_per_cycle=constants["blocks_per_cycle"],
-        block_security_deposit=int(constants["block_security_deposit"]),
-        endorsement_security_deposit=int(constants["endorsement_security_deposit"]),
-        # 'baking_reward_per_endorsement': ['1250000', '187500'],
-        baking_reward_per_endorsement=int(
-            constants["baking_reward_per_endorsement"][0]
-        ),
-        # 'endorsement_reward': ['1250000', '833333'],
-        endorsement_reward=int(constants["endorsement_reward"][0]),
-        endorsers_per_block=constants["endorsers_per_block"],
-    )
-
-
-def emmy_compute(
-    active_rolls,
-    cycles=1,
-    baking_rolls=1,
-    confidence=0.9,
-    blocks_per_cycle=4096,
-    block_security_deposit=512000000,
-    endorsement_security_deposit=64000000,
-    baking_reward_per_endorsement=1250000,
-    endorsement_reward=1250000,
-    endorsers_per_block=32,
-):
-
-    one_roll_probability = 1.0 / active_rolls
-    selection_probability = baking_rolls * one_roll_probability
-    max_block_reward = baking_reward_per_endorsement * endorsers_per_block
-
-    def mean_for_n(n):
-        return selection_probability * n
-
-    def max_for_n(n):
-        return binom.ppf(confidence, n, selection_probability)
-
-    block_count = blocks_per_cycle * cycles
-
-    b_mean = mean_for_n(block_count)
-    b_max = max_for_n(block_count)
-
-    endorsement_count = block_count * endorsers_per_block
-    e_mean = mean_for_n(endorsement_count)
-    e_max = max_for_n(endorsement_count)
-
-    b_deposits_mean = b_mean * block_security_deposit
-    e_deposits_mean = e_mean * endorsement_security_deposit
-    deposits_mean = b_deposits_mean + e_deposits_mean
-
-    b_deposits_max = b_max * block_security_deposit
-    e_deposits_max = e_max * endorsement_security_deposit
-    deposits_max = b_deposits_max + e_deposits_max
-
-    b_rewards_mean = b_mean * max_block_reward
-    e_rewards_mean = e_mean * endorsement_reward
-    rewards_mean = b_rewards_mean + e_rewards_mean
-
-    b_rewards_max = b_max * max_block_reward
-    e_rewards_max = e_max * endorsement_reward
-    rewards_max = b_rewards_max + e_rewards_max
-
-    def mkobj(count, deposits, rewards):
-        return {
-            "count": count,
-            "deposits": deposits / MUTEZ,
-            "rewards": rewards / MUTEZ,
-        }
-
-    return {
-        "active_rolls": active_rolls,
-        "cycles": cycles,
-        "bakes": {
-            "mean": mkobj(b_mean, b_deposits_mean, b_rewards_mean),
-            "max": mkobj(
-                b_max,
-                b_deposits_max,
-                b_rewards_max,
-            ),
-        },
-        "endorsements": {
-            "mean": mkobj(e_mean, e_deposits_mean, e_rewards_mean),
-            "max": mkobj(
-                e_max,
-                e_deposits_max,
-                e_rewards_max,
-            ),
-        },
-        "total": {
-            "mean": mkobj(
-                e_mean + b_mean,
-                deposits_mean,
-                rewards_mean,
-            ),
-            "max": mkobj(
-                e_max + b_max,
-                deposits_max,
-                rewards_max,
-            ),
-        },
-    }
 
 
 def calc_active_stake(staking_balance, deposit_cap, frozen_deposits_percentage=10):
@@ -123,7 +21,7 @@ def calc_active_stake(staking_balance, deposit_cap, frozen_deposits_percentage=1
     return min(float(staking_balance), deposit_cap * 100 / frozen_deposits_percentage)
 
 
-def tenderbake_args_from_constants(constants):
+def args_from_constants(constants):
     """
     >>> c = {
     ...     "proof_of_work_nonce_size": 8,
@@ -181,7 +79,7 @@ def tenderbake_args_from_constants(constants):
     ...     "consensus_committee_size": 7000,
     ...     "consensus_threshold": 4667,
     ... }
-    >>> tenderbake_args_from_constants(c) == r
+    >>> args_from_constants(c) == r
     True
 
     """
@@ -199,7 +97,7 @@ def tenderbake_args_from_constants(constants):
     )
 
 
-def tenderbake_compute(
+def compute(
     total_active_stake,
     staking_balance,
     deposit_cap,
@@ -212,17 +110,27 @@ def tenderbake_compute(
     endorsing_reward_per_slot=2_857,
     baking_reward_fixed_portion=10_000_000,
     baking_reward_bonus_per_slot=4_286,
+    eligibility_threshold=6_000_000,
 ):
     """
-    >>> r = tenderbake_compute(
-    ...     100, 5, 0.5, consensus_committee_size=8000, endorsing_reward_per_slot=2500
+    >>> r = compute(
+    ...     100, 5, 0.5,
+    ...     consensus_committee_size=8000,
+    ...     endorsing_reward_per_slot=2500,
+    ...     eligibility_threshold=1
     ... )
     ...
     >>> e = r['endorsements']
     >>> e['count']
     3276800.0
     >>> e['rewards']
-    8192000000.0
+    8192.0
+    >>> r = compute(
+    ...     100, 0, 0.5
+    ... )
+    >>> r['bakes']['mean']['count']
+    0
+
     """
     active_stake = calc_active_stake(
         staking_balance,
@@ -230,7 +138,11 @@ def tenderbake_compute(
         frozen_deposits_percentage=frozen_deposits_percentage,
     )
 
-    selection_probability = active_stake / total_active_stake
+    selection_probability = (
+        active_stake / total_active_stake
+        if staking_balance >= eligibility_threshold
+        else 0
+    )
 
     block_count = blocks_per_cycle * cycles
 
@@ -273,3 +185,83 @@ def tenderbake_compute(
         },
         "endorsements": {"count": e_mean, "rewards": e_rewards_mean / MUTEZ},
     }
+
+
+def fmt_rewards_range(values: Iterable):
+    return " - ".join("{0:.1f}".format(v) for v in values)
+
+
+def fmt_count(value: float):
+    return f"{value:.2f}" if value < 100 else f"{value:.0f}"
+
+
+def format(result):
+    output = [
+        f"active stake: {result['active_stake']}",
+        f"cycles: {result['cycles']}",
+        "",
+    ]
+
+    key1 = "bakes"
+    output.append(key1)
+    col1 = "mean"
+    col2 = "max"
+    bakes_header = " " * 10 + f"{col1:>16} {col2:>16}"
+    output.append("-" * len(bakes_header))
+    output.append(bakes_header)
+    d = result[key1]
+
+    key2 = "count"
+    count_mean = d[col1][key2]
+    count_max = d[col2][key2]
+    output.append(f"{key2:>8}: {fmt_count(count_mean):>16} {fmt_count(count_max):>16}")
+
+    key2 = "rewards"
+    rewards_mean = d[col1][key2]
+    rewards_max = d[col2][key2]
+    output.append(
+        f"{key2:>8}: {fmt_rewards_range(rewards_mean):>16}ꜩ{fmt_rewards_range(rewards_max):>16}ꜩ"
+    )
+    output.append("\n")
+
+    key1 = "endorsements"
+    output.append(key1)
+    output.append("-" * len(bakes_header))
+    d = result[key1]
+
+    key2 = "count"
+    count = d[key2]
+    output.append(f"{key2:>8}: {fmt_count(count):>16}")
+    key2 = "rewards"
+    rewards = d[key2]
+    output.append(f"{key2:>8}: {rewards:16.1f}ꜩ")
+    output.append("\n")
+
+    return "\n".join(output)
+
+
+def run(
+    constants,
+    active_rolls,
+    full_balance=6000,
+    delegated_balance=0,
+    deposit_limit=None,
+    cycles=1,
+    confidence=0.9,
+    eligibility_rolls=1,
+):
+    args = args_from_constants(constants)
+    roll_size = int(constants["tokens_per_roll"])
+    total_active_stake = active_rolls * roll_size
+    staking_balance = full_balance + delegated_balance
+    deposit_cap = deposit_limit or full_balance
+    result = compute(
+        total_active_stake,
+        staking_balance * MUTEZ,
+        deposit_cap=deposit_cap * MUTEZ,
+        cycles=cycles,
+        confidence=confidence,
+        eligibility_threshold=eligibility_rolls * roll_size,
+        **args,
+    )
+    return format(result)

@@ -131,13 +131,8 @@ const App = () => {
       setMessage("Calculating...");
       console.log("constants", constants);
       const preservedCycles = constants.preserved_cycles;
-
       const tokensPerRoll = parseInt(constants.tokens_per_roll);
       const totalActiveStake = activeRolls * tokensPerRoll;
-      const stakingBalance = fullBalanceAsFloat + delegatedBalanceAsFloat;
-      const depositCap = fullBalanceAsFloat;
-
-      console.log(fullBalance, delegatedBalance, stakingBalance);
 
       const constantsPyCode = JSON.stringify(constants)
         .replaceAll("true", "True")
@@ -149,38 +144,35 @@ const App = () => {
       const loadWheelCode = `
 import micropip
 await micropip.install('./py/dist/bakestimator-0.2-py3-none-any.whl')
-
-from bakestimator import calc, fmt
       `;
       let code = null;
 
       if (isTenderbake()) {
         code = `
 ${loadWheelCode}
-args = calc.tenderbake_args_from_constants(${constantsPyCode})
-
-result = calc.tenderbake_compute(
-        ${totalActiveStake},
-        ${stakingBalance * 1e6},
-        ${depositCap * 1e6},
-        confidence=${confidence},
-        cycles=${preservedCycles},
-        **args)
-fmt.tenderbake(result)
+from bakestimator import tenderbake
+tenderbake.run(
+    ${constantsPyCode},
+    ${activeRolls},
+    confidence=${confidence},
+    cycles=${preservedCycles},
+    full_balance=${fullBalance},
+    delegated_balance=${delegatedBalance},
+)
 `;
       } else {
         code = `
 ${loadWheelCode}
-args = calc.emmy_args_from_constants(${constantsPyCode})
-result = calc.emmy_compute(${activeRolls},
-        baking_rolls=${rolls},
-        confidence=${confidence},
-        cycles=${preservedCycles},
-        **args)
-fmt.emmy(result)
+from bakestimator import emmy
+emmy.run(
+    ${constantsPyCode},
+    ${activeRolls},
+    baking_rolls=${rolls},
+    confidence=${confidence},
+    cycles=${preservedCycles})
 `;
       }
-
+      console.debug(code);
       const pyodide = await pyodideLoading;
       const result = await pyodide.runPythonAsync(code);
       setCalculationResult(result);

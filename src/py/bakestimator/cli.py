@@ -2,8 +2,8 @@ import argparse
 
 import requests
 
-from . import calc
-from . import fmt
+from . import emmy
+from . import tenderbake
 
 RPC_CONSTANTS = "chains/main/blocks/head/context/constants"
 RPC_ACTIVE_ROLLS = "chains/main/blocks/head/votes/total_voting_power"
@@ -130,35 +130,27 @@ def main():
     preserved_cycles = constants["preserved_cycles"]
     roll_size = int(constants["tokens_per_roll"])
     print(f"preserved cycles: {preserved_cycles}")
-    print(f"roll size: {roll_size//calc.MUTEZ}")
+    print(f"roll size: {roll_size//1e6}")
     print()
 
     if "frozen_deposits_percentage" in constants:
-        args_from_constants = calc.tenderbake_args_from_constants(constants)
-        total_active_stake = active_rolls * roll_size
-        print(f"total active stake: {total_active_stake/calc.MUTEZ}ꜩ")
-        full_balance = args.full_balance
-        delegated_balance = args.delegated_balance
-        staking_balance = full_balance + delegated_balance
-        deposit_cap = args.deposit_limit or full_balance
-        result = calc.tenderbake_compute(
-            total_active_stake,
-            staking_balance * calc.MUTEZ,
-            deposit_cap=deposit_cap * calc.MUTEZ,
-            cycles=args.cycles,
-            confidence=args.confidence,
-            **args_from_constants,
+        print(
+            tenderbake.run(
+                constants,
+                active_rolls,
+                cycles=args.cycles,
+                confidence=0.9,
+                full_balance=args.full_balance,
+                delegated_balance=args.delegated_balance,
+            )
         )
-        print(fmt.tenderbake(result))
-
     else:
-        print(f"active rolls: {active_rolls}")
-        args_from_constants = calc.emmy_args_from_constants(constants)
-        result = calc.emmy_compute(
-            active_rolls,
-            cycles=args.cycles,
-            baking_rolls=args.rolls,
-            confidence=args.confidence,
-            **args_from_constants,
+        print(
+            emmy.run(
+                constants,
+                active_rolls,
+                cycles=args.cycles,
+                baking_rolls=args.rolls,
+                confidence=args.confidence,
+            )
         )
-        print(fmt.emmy(result))
