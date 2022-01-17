@@ -6,9 +6,25 @@ const rpcConstants = "/chains/main/blocks/head/context/constants";
 const rpcVotingPower = "/chains/main/blocks/head/votes/total_voting_power";
 
 const MAINNET = "mainnet";
+const MAINNET_ITHACA = "mainnet (Ithaca)";
 
 const defaultNetworks = {
   [MAINNET]: { rpc: "https://mainnet.api.tez.ie", sortOrder: 0 },
+  [MAINNET_ITHACA]: {
+    rpc: "https://mainnet.api.tez.ie",
+    sortOrder: 1,
+    constants: {
+      preserved_cycles: 5,
+      blocks_per_cycle: 8192,
+      tokens_per_roll: "6000000000",
+      baking_reward_fixed_portion: "10000000",
+      baking_reward_bonus_per_slot: "4286",
+      endorsing_reward_per_slot: "2857",
+      consensus_committee_size: 7000,
+      consensus_threshold: 4667,
+      frozen_deposits_percentage: 10,
+    },
+  },
 };
 
 const fetchJson = async (url) => {
@@ -18,14 +34,21 @@ const fetchJson = async (url) => {
 const App = () => {
   const [networks, setNetworks] = React.useState(defaultNetworks);
   const [rolls, setRolls] = React.useState("1");
+  const [fullBalance, setFullBalance] = React.useState("6000");
+  const [delegatedBalance, setDelegatedBalance] = React.useState("0");
   const [tzNetwork, setTzNetwork] = React.useState(MAINNET);
   const [message, setMessage] = React.useState("");
   const [errors, setErrors] = React.useState([]);
   const [calculationResult, setCalculationResult] = React.useState("");
   const [running, setRunning] = React.useState(false);
   const [pyodideLoading, setPyodideLoading] = React.useState(null);
+  const [constants, setConstants] = React.useState(null);
+
+  const isTenderbake = () => constants && constants.frozen_deposits_percentage;
 
   const fetchConstants = async (network) => {
+    const { constants } = networks[network];
+    if (constants) return constants;
     const url = `${networks[network].rpc}${rpcConstants}`;
     return await fetchJson(url);
   };
@@ -54,8 +77,27 @@ const App = () => {
   };
 
   React.useEffect(() => {
+    (async () => {
+      setConstants(null);
+      setRunning(true);
+      setMessage("Fetching protocol constants...");
+      try {
+        const constants = await fetchConstants(tzNetwork);
+        setConstants(constants);
+        setMessage("");
+      } catch (err) {
+        console.error(err);
+        setMessage("Failed to fetch protocol constants");
+        addError(err.getMessage());
+      } finally {
+        setRunning(false);
+      }
+    })();
+  }, [networks, tzNetwork]);
+
+  React.useEffect(() => {
     const pyodidePromise = loadPyodide({
-      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.17.0/full/",
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.18.1/full/",
     });
     pyodidePromise.then(
       (pyodide) => {
@@ -101,25 +143,54 @@ const App = () => {
     setRunning(true);
     try {
       setMessage("Fetching protocol constants...");
-      const constants = await fetchConstants(tzNetwork);
+      //const constants = await fetchConstants(tzNetwork);
       setMessage("Getting active roll count...");
       const activeRolls = await fetchActiveRolls(tzNetwork);
       setMessage("Calculating...");
       console.log("constants", constants);
       const preservedCycles = constants.preserved_cycles;
+      const tokensPerRoll = parseInt(constants.tokens_per_roll);
+      const totalActiveStake = activeRolls * tokensPerRoll;
 
-      const code = `
+      const constantsPyCode = JSON.stringify(constants)
+        .replaceAll("true", "True")
+        .replaceAll("false", "False")
+        .replaceAll("null", "None");
+
+      console.log(constants);
+
+      const loadWheelCode = `
 import micropip
-await micropip.install('./py/dist/bakestimator-0.1-py3-none-any.whl')
+await micropip.install('./py/dist/bakestimator-0.2-py3-none-any.whl')
+      `;
+      let code = null;
 
-from bakestimator import calc, fmt
-fmt.text(calc.compute(${activeRolls},
-         baking_rolls=${rolls},
-         confidence=${confidence},
-         cycles=${preservedCycles},
-         **calc.args_from_constants(${JSON.stringify(constants)})))
+      if (isTenderbake()) {
+        code = `
+${loadWheelCode}
+from bakestimator import tenderbake
+tenderbake.run(
+    ${constantsPyCode},
+    ${activeRolls},
+    confidence=${confidence},
+    cycles=${preservedCycles},
+    full_balance=${fullBalance},
+    delegated_balance=${delegatedBalance},
+)
 `;
-
+      } else {
+        code = `
+${loadWheelCode}
+from bakestimator import emmy
+emmy.run(
+    ${constantsPyCode},
+    ${activeRolls},
+    baking_rolls=${rolls},
+    confidence=${confidence},
+    cycles=${preservedCycles})
+`;
+      }
+      console.debug(code);
       const pyodide = await pyodideLoading;
       const result = await pyodide.runPythonAsync(code);
       setCalculationResult(result);
@@ -136,13 +207,31 @@ fmt.text(calc.compute(${activeRolls},
     setCalculationResult("");
   };
 
+  const handleFullBalanceChange = (e) => {
+    setFullBalance(e.target.value);
+    setCalculationResult("");
+  };
+
+  const handleDelegatedBalanceChange = (e) => {
+    setDelegatedBalance(e.target.value);
+    setCalculationResult("");
+  };
+
   const handleTzNetworkChange = (e) => {
     setTzNetwork(e.target.value);
     setCalculationResult("");
   };
 
+  const isValidBalance = (value, min = 0) =>
+    typeof value === "number" && value >= min;
+
   const rollsAsInt = parseInt(rolls);
   const rollsInputValid = Number.isInteger(rollsAsInt) && rollsAsInt > 0;
+  const fullBalanceAsFloat = parseFloat(fullBalance);
+  const fullBalanceInputValid = isValidBalance(fullBalanceAsFloat, 6000);
+
+  const delegatedBalanceAsFloat = parseFloat(delegatedBalance);
+  const delegatedBalanceInputValid = isValidBalance(delegatedBalanceAsFloat);
 
   return (
     <div className="m-4">
@@ -184,10 +273,8 @@ fmt.text(calc.compute(${activeRolls},
       </div>
       <hr />
       <div className="field is-grouped">
-        <div className="field is-horizontal m-2">
-          <div className="field-label is-normal">
-            <label className="label">Network</label>
-          </div>
+        <div className="field m-2">
+          <label className="label">Network</label>
           <div className="control">
             <div className="select">
               <select onChange={handleTzNetworkChange} value={tzNetwork}>
@@ -201,30 +288,28 @@ fmt.text(calc.compute(${activeRolls},
           </div>
         </div>
 
-        <div className="field is-horizontal m-2">
-          <div className="field-label is-normal">
+        {!isTenderbake() && (
+          <div className="field m-2">
             <label className="label">Rolls</label>
+            <div className="control">
+              <input
+                className={`input ${rollsInputValid ? "" : "is-danger"}`}
+                type="number"
+                value={rolls}
+                maxLength={6}
+                style={{ maxWidth: 100 }}
+                onChange={handleRollsChange}
+              />
+            </div>
           </div>
-          <div className="control">
-            <input
-              className={`input ${rollsInputValid ? "" : "is-danger"}`}
-              type="number"
-              value={rolls}
-              maxLength={6}
-              style={{ maxWidth: 100 }}
-              onChange={handleRollsChange}
-            />
-          </div>
-        </div>
+        )}
 
-        <div className="field is-horizontal m-2">
-          <div className="field-label is-normal">
-            <label className="label is-invisible">-</label>
-          </div>
+        <div className="field  m-2">
+          <label className="label is-invisible">-</label>
           <div className="control">
             <a
               className={`button is-info ${running ? "is-loading" : ""}`}
-              disabled={!rollsInputValid || running}
+              disabled={!rollsInputValid || running || !constants}
               onClick={run}
             >
               Calculate
@@ -232,6 +317,41 @@ fmt.text(calc.compute(${activeRolls},
           </div>
         </div>
       </div>
+
+      {isTenderbake() && (
+        <div className="field is-grouped">
+          <div className="field m-2">
+            <label className="label">Full Balance</label>
+            <div className="control">
+              <input
+                className={`input ${fullBalanceInputValid ? "" : "is-danger"}`}
+                type="number"
+                value={fullBalance}
+                maxLength={6}
+                style={{ maxWidth: 100 }}
+                onChange={handleFullBalanceChange}
+              />
+            </div>
+          </div>
+
+          <div className="field m-2">
+            <label className="label">Delegated Balance</label>
+            <div className="control">
+              <input
+                className={`input ${
+                  delegatedBalanceInputValid ? "" : "is-danger"
+                }`}
+                type="number"
+                value={delegatedBalance}
+                maxLength={6}
+                style={{ maxWidth: 100 }}
+                onChange={handleDelegatedBalanceChange}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-2">
         <span className="is-invisible">-</span>
         {message}
