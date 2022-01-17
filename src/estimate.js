@@ -255,10 +255,8 @@ emmy.run(
       </div>
       <hr />
       <div className="field is-grouped">
-        <div className="field is-horizontal m-2">
-          <div className="field-label is-normal">
-            <label className="label">Network</label>
-          </div>
+        <div className="field m-2">
+          <label className="label">Network</label>
           <div className="control">
             <div className="select">
               <select onChange={handleTzNetworkChange} value={tzNetwork}>
@@ -273,10 +271,8 @@ emmy.run(
         </div>
 
         {!isTenderbake() && (
-          <div className="field is-horizontal m-2">
-            <div className="field-label is-normal">
-              <label className="label">Rolls</label>
-            </div>
+          <div className="field m-2">
+            <label className="label">Rolls</label>
             <div className="control">
               <input
                 className={`input ${rollsInputValid ? "" : "is-danger"}`}
@@ -290,10 +286,8 @@ emmy.run(
           </div>
         )}
 
-        <div className="field is-horizontal m-2">
-          <div className="field-label is-normal">
-            <label className="label is-invisible">-</label>
-          </div>
+        <div className="field  m-2">
+          <label className="label is-invisible">-</label>
           <div className="control">
             <a
               className={`button is-info ${running ? "is-loading" : ""}`}
@@ -308,10 +302,8 @@ emmy.run(
 
       {isTenderbake() && (
         <div className="field is-grouped">
-          <div className="field is-horizontal m-2">
-            <div className="field-label is-normal">
-              <label className="label">Full Balance</label>
-            </div>
+          <div className="field m-2">
+            <label className="label">Full Balance</label>
             <div className="control">
               <input
                 className={`input ${fullBalanceInputValid ? "" : "is-danger"}`}
@@ -324,10 +316,8 @@ emmy.run(
             </div>
           </div>
 
-          <div className="field is-horizontal m-2">
-            <div className="field-label is-normal">
-              <label className="label">Delegated Balance</label>
-            </div>
+          <div className="field m-2">
+            <label className="label">Delegated Balance</label>
             <div className="control">
               <input
                 className={`input ${
