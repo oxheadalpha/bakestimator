@@ -220,7 +220,7 @@ def format(result):
     rewards_mean = d[col1][key2]
     rewards_max = d[col2][key2]
     output.append(
-        f"{key2:>8}: {fmt_rewards_range(rewards_mean):>16}ꜩ{fmt_rewards_range(rewards_max):>16}ꜩ"
+        f"{key2:>8}: {fmt_rewards_range(rewards_mean):>16} {fmt_rewards_range(rewards_max):>16}"
     )
     output.append("\n")
 
@@ -234,7 +234,7 @@ def format(result):
     output.append(f"{key2:>8}: {fmt_count(count):>16}")
     key2 = "rewards"
     rewards = d[key2]
-    output.append(f"{key2:>8}: {rewards:16.1f}ꜩ")
+    output.append(f"{key2:>8}: {rewards:16.1f}")
     output.append("\n")
 
     return "\n".join(output)
