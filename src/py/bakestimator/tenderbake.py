@@ -110,7 +110,7 @@ def compute(
     endorsing_reward_per_slot=2_857,
     baking_reward_fixed_portion=10_000_000,
     baking_reward_bonus_per_slot=4_286,
-    eligibility_threshold=6_000_000,
+    eligibility_threshold=6_000_000_000,
 ):
     """
     >>> r = compute(
@@ -242,17 +242,15 @@ def format(result):
 
 def run(
     constants,
-    active_rolls,
+    total_active_stake,
     full_balance=6000,
     delegated_balance=0,
     deposit_limit=None,
     cycles=1,
     confidence=0.9,
-    eligibility_rolls=1,
+    eligibility_threshold=6_000_000_000,
 ):
     args = args_from_constants(constants)
-    roll_size = int(constants["tokens_per_roll"])
-    total_active_stake = active_rolls * roll_size
     staking_balance = full_balance + delegated_balance
     deposit_cap = deposit_limit or full_balance
     result = compute(
@@ -261,7 +259,7 @@ def run(
         deposit_cap=deposit_cap * MUTEZ,
         cycles=cycles,
         confidence=confidence,
-        eligibility_threshold=eligibility_rolls * roll_size,
+        eligibility_threshold=eligibility_threshold,
         **args,
     )
     return format(result)

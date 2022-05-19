@@ -53,7 +53,7 @@ const App = () => {
     return await fetchJson(url);
   };
 
-  const fetchActiveRolls = async (network) => {
+  const fetchTotalVotingPower = async (network) => {
     const url = `${networks[network].rpc}${rpcVotingPower}`;
     return await fetchJson(url);
   };
@@ -145,12 +145,17 @@ const App = () => {
       setMessage("Fetching protocol constants...");
       //const constants = await fetchConstants(tzNetwork);
       setMessage("Getting active roll count...");
-      const activeRolls = await fetchActiveRolls(tzNetwork);
+      const totalVotingPower = await fetchTotalVotingPower(tzNetwork);
       setMessage("Calculating...");
       console.log("constants", constants);
       const preservedCycles = constants.preserved_cycles;
       const tokensPerRoll = parseInt(constants.tokens_per_roll);
-      const totalActiveStake = activeRolls * tokensPerRoll;
+      const totalActiveStake =
+        typeof totalVotingPower === "string"
+          ? // in Jakarta, this is a string, total active stake in mutez,
+            // pass to Python as is, do not parse
+            totalVotingPower
+          : totalVotingPower * tokensPerRoll; // in Ithaca, this is number of rolls
 
       const constantsPyCode = JSON.stringify(constants)
         .replaceAll("true", "True")
@@ -161,7 +166,7 @@ const App = () => {
 
       const loadWheelCode = `
 import micropip
-await micropip.install('./py/dist/bakestimator-0.2-py3-none-any.whl')
+await micropip.install('./py/dist/bakestimator-0.3-py3-none-any.whl')
       `;
       let code = null;
 
@@ -171,11 +176,12 @@ ${loadWheelCode}
 from bakestimator import tenderbake
 tenderbake.run(
     ${constantsPyCode},
-    ${activeRolls},
+    ${totalActiveStake},
     confidence=${confidence},
     cycles=${preservedCycles},
     full_balance=${fullBalance},
     delegated_balance=${delegatedBalance},
+    eligibility_threshold=${tokensPerRoll},
 )
 `;
       } else {
@@ -184,7 +190,7 @@ ${loadWheelCode}
 from bakestimator import emmy
 emmy.run(
     ${constantsPyCode},
-    ${activeRolls},
+    ${totalVotingPower},
     baking_rolls=${rolls},
     confidence=${confidence},
     cycles=${preservedCycles})

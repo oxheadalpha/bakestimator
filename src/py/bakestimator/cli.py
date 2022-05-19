@@ -6,15 +6,15 @@ from . import emmy
 from . import tenderbake
 
 RPC_CONSTANTS = "chains/main/blocks/head/context/constants"
-RPC_ACTIVE_ROLLS = "chains/main/blocks/head/votes/total_voting_power"
+RPC_TOTAL_VOTING_POWER = "chains/main/blocks/head/votes/total_voting_power"
 
 
 def fetch_constants(tezos_rpc_url):
     return requests.get(f"{tezos_rpc_url}/{RPC_CONSTANTS}").json()
 
 
-def fetch_active_rolls(tezos_rpc_url):
-    return requests.get(f"{tezos_rpc_url}/{RPC_ACTIVE_ROLLS}").json()
+def fetch_total_voting_power(tezos_rpc_url):
+    return requests.get(f"{tezos_rpc_url}/{RPC_TOTAL_VOTING_POWER}").json()
 
 
 def network_name_to_rpc(networks, network_name):
@@ -126,9 +126,15 @@ def main():
         args.network.lower(),
     )
     constants = fetch_constants(rpc)
-    active_rolls = fetch_active_rolls(rpc)
+    total_voting_power = fetch_total_voting_power(rpc)
     preserved_cycles = constants["preserved_cycles"]
     roll_size = int(constants["tokens_per_roll"])
+    if isinstance(total_voting_power, str):
+        # in Jakarta total voting power is total active stake in mutez
+        total_active_stake = int(total_voting_power)
+    else:
+        # in Ithaca total voting power is the same as in previous protocols - number of rolls
+        total_active_stake = total_voting_power * roll_size
     print(f"preserved cycles: {preserved_cycles}")
     print(f"roll size: {roll_size//1e6}")
     print()
@@ -137,18 +143,19 @@ def main():
         print(
             tenderbake.run(
                 constants,
-                active_rolls,
+                total_active_stake,
                 cycles=args.cycles,
                 confidence=0.9,
                 full_balance=args.full_balance,
                 delegated_balance=args.delegated_balance,
+                eligibility_threshold=1 * roll_size,
             )
         )
     else:
         print(
             emmy.run(
                 constants,
-                active_rolls,
+                total_voting_power,
                 cycles=args.cycles,
                 baking_rolls=args.rolls,
                 confidence=args.confidence,
