@@ -6,25 +6,9 @@ const rpcConstants = "/chains/main/blocks/head/context/constants";
 const rpcVotingPower = "/chains/main/blocks/head/votes/total_voting_power";
 
 const MAINNET = "mainnet";
-const MAINNET_ITHACA = "mainnet (Ithaca)";
 
 const defaultNetworks = {
   [MAINNET]: { rpc: "https://mainnet.api.tez.ie", sortOrder: 0 },
-  [MAINNET_ITHACA]: {
-    rpc: "https://mainnet.api.tez.ie",
-    sortOrder: 1,
-    constants: {
-      preserved_cycles: 5,
-      blocks_per_cycle: 8192,
-      tokens_per_roll: "6000000000",
-      baking_reward_fixed_portion: "10000000",
-      baking_reward_bonus_per_slot: "4286",
-      endorsing_reward_per_slot: "2857",
-      consensus_committee_size: 7000,
-      consensus_threshold: 4667,
-      frozen_deposits_percentage: 10,
-    },
-  },
 };
 
 const fetchJson = async (url) => {
