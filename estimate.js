@@ -6,25 +6,9 @@ const rpcConstants = "/chains/main/blocks/head/context/constants";
 const rpcVotingPower = "/chains/main/blocks/head/votes/total_voting_power";
 
 const MAINNET = "mainnet";
-const MAINNET_ITHACA = "mainnet (Ithaca)";
 
 const defaultNetworks = {
   [MAINNET]: { rpc: "https://mainnet.api.tez.ie", sortOrder: 0 },
-  [MAINNET_ITHACA]: {
-    rpc: "https://mainnet.api.tez.ie",
-    sortOrder: 1,
-    constants: {
-      preserved_cycles: 5,
-      blocks_per_cycle: 8192,
-      tokens_per_roll: "6000000000",
-      baking_reward_fixed_portion: "10000000",
-      baking_reward_bonus_per_slot: "4286",
-      endorsing_reward_per_slot: "2857",
-      consensus_committee_size: 7000,
-      consensus_threshold: 4667,
-      frozen_deposits_percentage: 10,
-    },
-  },
 };
 
 const fetchJson = async (url) => {
@@ -53,7 +37,7 @@ const App = () => {
     return await fetchJson(url);
   };
 
-  const fetchActiveRolls = async (network) => {
+  const fetchTotalVotingPower = async (network) => {
     const url = `${networks[network].rpc}${rpcVotingPower}`;
     return await fetchJson(url);
   };
@@ -145,12 +129,17 @@ const App = () => {
       setMessage("Fetching protocol constants...");
       //const constants = await fetchConstants(tzNetwork);
       setMessage("Getting active roll count...");
-      const activeRolls = await fetchActiveRolls(tzNetwork);
+      const totalVotingPower = await fetchTotalVotingPower(tzNetwork);
       setMessage("Calculating...");
       console.log("constants", constants);
       const preservedCycles = constants.preserved_cycles;
       const tokensPerRoll = parseInt(constants.tokens_per_roll);
-      const totalActiveStake = activeRolls * tokensPerRoll;
+      const totalActiveStake =
+        typeof totalVotingPower === "string"
+          ? // in Jakarta, this is a string, total active stake in mutez,
+            // pass to Python as is, do not parse
+            totalVotingPower
+          : totalVotingPower * tokensPerRoll; // in Ithaca, this is number of rolls
 
       const constantsPyCode = JSON.stringify(constants)
         .replaceAll("true", "True")
@@ -161,7 +150,7 @@ const App = () => {
 
       const loadWheelCode = `
 import micropip
-await micropip.install('./py/dist/bakestimator-0.2-py3-none-any.whl')
+await micropip.install('./py/dist/bakestimator-0.3-py3-none-any.whl')
       `;
       let code = null;
 
@@ -171,11 +160,12 @@ ${loadWheelCode}
 from bakestimator import tenderbake
 tenderbake.run(
     ${constantsPyCode},
-    ${activeRolls},
+    ${totalActiveStake},
     confidence=${confidence},
     cycles=${preservedCycles},
     full_balance=${fullBalance},
     delegated_balance=${delegatedBalance},
+    eligibility_threshold=${tokensPerRoll},
 )
 `;
       } else {
@@ -184,7 +174,7 @@ ${loadWheelCode}
 from bakestimator import emmy
 emmy.run(
     ${constantsPyCode},
-    ${activeRolls},
+    ${totalVotingPower},
     baking_rolls=${rolls},
     confidence=${confidence},
     cycles=${preservedCycles})
