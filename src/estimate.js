@@ -150,7 +150,7 @@ const App = () => {
 
       const loadWheelCode = `
 import micropip
-await micropip.install('./py/dist/bakestimator-0.3-py3-none-any.whl')
+await micropip.install('./py/dist/bakestimator-0.4-py3-none-any.whl')
       `;
       let code = null;
 
