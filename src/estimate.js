@@ -221,6 +221,7 @@ tenderbake.run(
           <a
             href="https://tezos.gitlab.io/active/consensus.html#economic-incentives"
             title="Link to Tezos documentation on protocol econsomic incentives"
+            target="_blank"
           >
             <span className="icon">
               <img src="./school.svg" alt="Oxford cap" />
@@ -230,6 +231,7 @@ tenderbake.run(
           <a
             href="https://teztnets.xyz/"
             title="Link to Tezos testnets catalog"
+            target="_blank"
           >
             <span className="icon">
               <img src="./lan.svg" alt="Computer Network" />
@@ -239,6 +241,7 @@ tenderbake.run(
           <a
             href="https://github.com/tqtezos/bakestimator"
             title="Link to source code respository"
+            target="_blank"
           >
             <span className="icon">
               <img src="./github.svg" alt="Github Octocat" />
