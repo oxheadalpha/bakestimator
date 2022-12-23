@@ -28,8 +28,6 @@ const App = () => {
   const [pyodideLoading, setPyodideLoading] = React.useState(null);
   const [constants, setConstants] = React.useState(null);
 
-  const isTenderbake = () => constants && constants.frozen_deposits_percentage;
-
   const fetchConstants = async (network) => {
     const { constants } = networks[network];
     if (constants) return constants;
@@ -51,6 +49,7 @@ const App = () => {
   };
 
   const addError = (error) => {
+    console.error(error);
     setErrors([...errors, error]);
   };
 
@@ -130,17 +129,15 @@ const App = () => {
       //const constants = await fetchConstants(tzNetwork);
       setMessage("Getting active roll count...");
       const totalVotingPower = await fetchTotalVotingPower(tzNetwork);
+      if (typeof totalVotingPower !== "string") {
+        setRunning(false);
+        setErrors(["Unexpected total voting power value: " + totalVotingPower]);
+        return;
+      }
       setMessage("Calculating...");
       console.log("constants", constants);
       const preservedCycles = constants.preserved_cycles;
-      const tokensPerRoll = parseInt(constants.tokens_per_roll);
-      const totalActiveStake =
-        typeof totalVotingPower === "string"
-          ? // in Jakarta, this is a string, total active stake in mutez,
-            // pass to Python as is, do not parse
-            totalVotingPower
-          : totalVotingPower * tokensPerRoll; // in Ithaca, this is number of rolls
-
+      const totalActiveStake = totalVotingPower;
       const constantsPyCode = JSON.stringify(constants)
         .replaceAll("true", "True")
         .replaceAll("false", "False")
@@ -150,12 +147,12 @@ const App = () => {
 
       const loadWheelCode = `
 import micropip
-await micropip.install('./py/dist/bakestimator-0.3-py3-none-any.whl')
+await micropip.install('./py/dist/bakestimator-0.4-py3-none-any.whl')
       `;
       let code = null;
 
-      if (isTenderbake()) {
-        code = `
+      const minimalStake = parseInt(constants.minimal_stake);
+      code = `
 ${loadWheelCode}
 from bakestimator import tenderbake
 tenderbake.run(
@@ -165,21 +162,9 @@ tenderbake.run(
     cycles=${preservedCycles},
     full_balance=${fullBalance},
     delegated_balance=${delegatedBalance},
-    eligibility_threshold=${tokensPerRoll},
+    eligibility_threshold=${minimalStake},
 )
-`;
-      } else {
-        code = `
-${loadWheelCode}
-from bakestimator import emmy
-emmy.run(
-    ${constantsPyCode},
-    ${totalVotingPower},
-    baking_rolls=${rolls},
-    confidence=${confidence},
-    cycles=${preservedCycles})
-`;
-      }
+      `;
       console.debug(code);
       const pyodide = await pyodideLoading;
       const result = await pyodide.runPythonAsync(code);
@@ -234,8 +219,9 @@ emmy.run(
         </div>
         <div className="is-flex is-flex-justify-content-end is-flex-wrap-wrap">
           <a
-            href="https://tezos.gitlab.io/introduction/howtorun.html#deposits-and-over-delegation"
-            title="Link to Tezos documentation on over-delegation"
+            href="https://tezos.gitlab.io/active/consensus.html#economic-incentives"
+            title="Link to Tezos documentation on protocol econsomic incentives"
+            target="_blank"
           >
             <span className="icon">
               <img src="./school.svg" alt="Oxford cap" />
@@ -245,6 +231,7 @@ emmy.run(
           <a
             href="https://teztnets.xyz/"
             title="Link to Tezos testnets catalog"
+            target="_blank"
           >
             <span className="icon">
               <img src="./lan.svg" alt="Computer Network" />
@@ -254,6 +241,7 @@ emmy.run(
           <a
             href="https://github.com/tqtezos/bakestimator"
             title="Link to source code respository"
+            target="_blank"
           >
             <span className="icon">
               <img src="./github.svg" alt="Github Octocat" />
@@ -261,7 +249,14 @@ emmy.run(
           </a>
         </div>
       </div>
-      <hr />
+      <a href="https://u24.gov.ua/" target="_blank">
+        <div
+          className="has-text-centered has-text-grey-lighter is-size-6 mb-1 mt-3"
+          style={{ background: "#1b3d4c" }}
+        >
+          🇺🇦 Donate to Ukraine
+        </div>
+      </a>
       <div className="field is-grouped">
         <div className="field m-2">
           <label className="label">Network</label>
@@ -278,22 +273,6 @@ emmy.run(
           </div>
         </div>
 
-        {!isTenderbake() && (
-          <div className="field m-2">
-            <label className="label">Rolls</label>
-            <div className="control">
-              <input
-                className={`input ${rollsInputValid ? "" : "is-danger"}`}
-                type="number"
-                value={rolls}
-                maxLength={6}
-                style={{ maxWidth: 100 }}
-                onChange={handleRollsChange}
-              />
-            </div>
-          </div>
-        )}
-
         <div className="field  m-2">
           <label className="label is-invisible">-</label>
           <div className="control">
@@ -308,39 +287,37 @@ emmy.run(
         </div>
       </div>
 
-      {isTenderbake() && (
-        <div className="field is-grouped">
-          <div className="field m-2">
-            <label className="label">Full Balance</label>
-            <div className="control">
-              <input
-                className={`input ${fullBalanceInputValid ? "" : "is-danger"}`}
-                type="number"
-                value={fullBalance}
-                maxLength={6}
-                style={{ maxWidth: 100 }}
-                onChange={handleFullBalanceChange}
-              />
-            </div>
-          </div>
-
-          <div className="field m-2">
-            <label className="label">Delegated Balance</label>
-            <div className="control">
-              <input
-                className={`input ${
-                  delegatedBalanceInputValid ? "" : "is-danger"
-                }`}
-                type="number"
-                value={delegatedBalance}
-                maxLength={6}
-                style={{ maxWidth: 100 }}
-                onChange={handleDelegatedBalanceChange}
-              />
-            </div>
+      <div className="field is-grouped">
+        <div className="field m-2">
+          <label className="label">Full Balance</label>
+          <div className="control">
+            <input
+              className={`input ${fullBalanceInputValid ? "" : "is-danger"}`}
+              type="number"
+              value={fullBalance}
+              maxLength={6}
+              style={{ maxWidth: 100 }}
+              onChange={handleFullBalanceChange}
+            />
           </div>
         </div>
-      )}
+
+        <div className="field m-2">
+          <label className="label">Delegated Balance</label>
+          <div className="control">
+            <input
+              className={`input ${
+                delegatedBalanceInputValid ? "" : "is-danger"
+              }`}
+              type="number"
+              value={delegatedBalance}
+              maxLength={6}
+              style={{ maxWidth: 100 }}
+              onChange={handleDelegatedBalanceChange}
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="mb-2">
         <span className="is-invisible">-</span>
@@ -363,13 +340,28 @@ emmy.run(
       })}
 
       {calculationResult && (
-        <div>
+        <div className="mb-2">
           <pre>{calculationResult}</pre>
           <div className="is-size-7">
             max values are calculated at {confidence * 100}% confidence
           </div>
         </div>
       )}
+
+      <a href="https://www.oxheadalpha.com" target="_blank">
+        <div className="is-flex is-justify-content-center is-size-7">
+          © 2022{" "}
+          <span className="icon">
+            <img
+              src="./oxheadalpha.svg"
+              width="16px"
+              height="16px"
+              alt="Oxhead Alpha company logo"
+            />
+          </span>
+          Oxhead Alpha, LLC. All rights reserved
+        </div>
+      </a>
     </div>
   );
 };
