@@ -131,17 +131,15 @@ const App = () => {
       //const constants = await fetchConstants(tzNetwork);
       setMessage("Getting active roll count...");
       const totalVotingPower = await fetchTotalVotingPower(tzNetwork);
+      if (typeof totalVotingPower !== "string") {
+        setRunning(false);
+        setErrors(["Unexpected total voting power value: " + totalVotingPower]);
+        return;
+      }
       setMessage("Calculating...");
       console.log("constants", constants);
       const preservedCycles = constants.preserved_cycles;
-      const tokensPerRoll = parseInt(constants.tokens_per_roll);
-      const totalActiveStake =
-        typeof totalVotingPower === "string"
-          ? // in Jakarta, this is a string, total active stake in mutez,
-            // pass to Python as is, do not parse
-            totalVotingPower
-          : totalVotingPower * tokensPerRoll; // in Ithaca, this is number of rolls
-
+      const totalActiveStake = totalVotingPower;
       const constantsPyCode = JSON.stringify(constants)
         .replaceAll("true", "True")
         .replaceAll("false", "False")
@@ -156,6 +154,7 @@ await micropip.install('./py/dist/bakestimator-0.4-py3-none-any.whl')
       let code = null;
 
       if (isTenderbake()) {
+        const minimalStake = parseInt(constants.minimal_stake);
         code = `
 ${loadWheelCode}
 from bakestimator import tenderbake
@@ -166,7 +165,7 @@ tenderbake.run(
     cycles=${preservedCycles},
     full_balance=${fullBalance},
     delegated_balance=${delegatedBalance},
-    eligibility_threshold=${tokensPerRoll},
+    eligibility_threshold=${minimalStake},
 )
 `;
       } else {

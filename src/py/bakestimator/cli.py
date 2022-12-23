@@ -36,16 +36,7 @@ def parse_args():
         default=1,
         help=("Calculate estimates for this number of cycles. Default: %(default)s"),
     )
-    p.add_argument(
-        "-r",
-        "--rolls",
-        default=1,
-        type=int,
-        help=(
-            "[emmy] Calculate estimates for this number of rolls of tez used for baking "
-            "Default: %(default)s"
-        ),
-    )
+
     p.add_argument(
         "-b",
         "--full-balance",
@@ -128,18 +119,17 @@ def main():
     constants = fetch_constants(rpc)
     total_voting_power = fetch_total_voting_power(rpc)
     preserved_cycles = constants["preserved_cycles"]
-    roll_size = int(constants["tokens_per_roll"])
     if isinstance(total_voting_power, str):
         # in Jakarta total voting power is total active stake in mutez
         total_active_stake = int(total_voting_power)
     else:
+        raise Exception("Unexpected total_voting_power value %r" % total_voting_power)
         # in Ithaca total voting power is the same as in previous protocols - number of rolls
-        total_active_stake = total_voting_power * roll_size
     print(f"preserved cycles: {preserved_cycles}")
-    print(f"roll size: {roll_size//1e6}")
     print()
 
     if "frozen_deposits_percentage" in constants:
+        minimal_stake = int(constants["minimal_stake"])
         print(
             tenderbake.run(
                 constants,
@@ -148,7 +138,7 @@ def main():
                 confidence=0.9,
                 full_balance=args.full_balance,
                 delegated_balance=args.delegated_balance,
-                eligibility_threshold=1 * roll_size,
+                eligibility_threshold=minimal_stake,
             )
         )
     else:
