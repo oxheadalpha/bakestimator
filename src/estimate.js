@@ -219,8 +219,8 @@ tenderbake.run(
         </div>
         <div className="is-flex is-flex-justify-content-end is-flex-wrap-wrap">
           <a
-            href="https://tezos.gitlab.io/introduction/howtorun.html#deposits-and-over-delegation"
-            title="Link to Tezos documentation on over-delegation"
+            href="https://tezos.gitlab.io/active/consensus.html#economic-incentives"
+            title="Link to Tezos documentation on protocol econsomic incentives"
           >
             <span className="icon">
               <img src="./school.svg" alt="Oxford cap" />
