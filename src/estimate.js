@@ -249,7 +249,11 @@ tenderbake.run(
           </a>
         </div>
       </div>
-      <hr />
+      <hr style={{ marginBottom: 2, marginTop: 10 }} />
+      <a href="https://u24.gov.ua/" target="_blank">
+        <div className="has-text-centered is-size-6">🇺🇦 Donate to Ukraine</div>
+      </a>
+      <hr style={{ marginTop: 2 }} />
       <div className="field is-grouped">
         <div className="field m-2">
           <label className="label">Network</label>
