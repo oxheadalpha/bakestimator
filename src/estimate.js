@@ -340,6 +340,21 @@ tenderbake.run(
           </div>
         </div>
       )}
+
+      <a href="https://www.oxheadalpha.com" target="_blank">
+        <div className="is-flex is-justify-content-center is-size-7">
+          © 2022{" "}
+          <span className="icon">
+            <img
+              src="./oxheadalpha.svg"
+              width="16px"
+              height="16px"
+              alt="Oxhead Alpha company logo"
+            />
+          </span>
+          Oxhead Alpha, LLC. All rights reserved
+        </div>
+      </a>
     </div>
   );
 };
