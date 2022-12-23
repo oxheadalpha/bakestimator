@@ -28,8 +28,6 @@ const App = () => {
   const [pyodideLoading, setPyodideLoading] = React.useState(null);
   const [constants, setConstants] = React.useState(null);
 
-  const isTenderbake = () => constants && constants.frozen_deposits_percentage;
-
   const fetchConstants = async (network) => {
     const { constants } = networks[network];
     if (constants) return constants;
@@ -153,9 +151,8 @@ await micropip.install('./py/dist/bakestimator-0.4-py3-none-any.whl')
       `;
       let code = null;
 
-      if (isTenderbake()) {
-        const minimalStake = parseInt(constants.minimal_stake);
-        code = `
+      const minimalStake = parseInt(constants.minimal_stake);
+      code = `
 ${loadWheelCode}
 from bakestimator import tenderbake
 tenderbake.run(
@@ -167,19 +164,7 @@ tenderbake.run(
     delegated_balance=${delegatedBalance},
     eligibility_threshold=${minimalStake},
 )
-`;
-      } else {
-        code = `
-${loadWheelCode}
-from bakestimator import emmy
-emmy.run(
-    ${constantsPyCode},
-    ${totalVotingPower},
-    baking_rolls=${rolls},
-    confidence=${confidence},
-    cycles=${preservedCycles})
-`;
-      }
+      `;
       console.debug(code);
       const pyodide = await pyodideLoading;
       const result = await pyodide.runPythonAsync(code);
@@ -278,22 +263,6 @@ emmy.run(
           </div>
         </div>
 
-        {!isTenderbake() && (
-          <div className="field m-2">
-            <label className="label">Rolls</label>
-            <div className="control">
-              <input
-                className={`input ${rollsInputValid ? "" : "is-danger"}`}
-                type="number"
-                value={rolls}
-                maxLength={6}
-                style={{ maxWidth: 100 }}
-                onChange={handleRollsChange}
-              />
-            </div>
-          </div>
-        )}
-
         <div className="field  m-2">
           <label className="label is-invisible">-</label>
           <div className="control">
@@ -308,39 +277,37 @@ emmy.run(
         </div>
       </div>
 
-      {isTenderbake() && (
-        <div className="field is-grouped">
-          <div className="field m-2">
-            <label className="label">Full Balance</label>
-            <div className="control">
-              <input
-                className={`input ${fullBalanceInputValid ? "" : "is-danger"}`}
-                type="number"
-                value={fullBalance}
-                maxLength={6}
-                style={{ maxWidth: 100 }}
-                onChange={handleFullBalanceChange}
-              />
-            </div>
-          </div>
-
-          <div className="field m-2">
-            <label className="label">Delegated Balance</label>
-            <div className="control">
-              <input
-                className={`input ${
-                  delegatedBalanceInputValid ? "" : "is-danger"
-                }`}
-                type="number"
-                value={delegatedBalance}
-                maxLength={6}
-                style={{ maxWidth: 100 }}
-                onChange={handleDelegatedBalanceChange}
-              />
-            </div>
+      <div className="field is-grouped">
+        <div className="field m-2">
+          <label className="label">Full Balance</label>
+          <div className="control">
+            <input
+              className={`input ${fullBalanceInputValid ? "" : "is-danger"}`}
+              type="number"
+              value={fullBalance}
+              maxLength={6}
+              style={{ maxWidth: 100 }}
+              onChange={handleFullBalanceChange}
+            />
           </div>
         </div>
-      )}
+
+        <div className="field m-2">
+          <label className="label">Delegated Balance</label>
+          <div className="control">
+            <input
+              className={`input ${
+                delegatedBalanceInputValid ? "" : "is-danger"
+              }`}
+              type="number"
+              value={delegatedBalance}
+              maxLength={6}
+              style={{ maxWidth: 100 }}
+              onChange={handleDelegatedBalanceChange}
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="mb-2">
         <span className="is-invisible">-</span>

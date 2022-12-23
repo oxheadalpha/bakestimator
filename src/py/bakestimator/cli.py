@@ -2,7 +2,6 @@ import argparse
 
 import requests
 
-from . import emmy
 from . import tenderbake
 
 RPC_CONSTANTS = "chains/main/blocks/head/context/constants"
@@ -128,26 +127,15 @@ def main():
     print(f"preserved cycles: {preserved_cycles}")
     print()
 
-    if "frozen_deposits_percentage" in constants:
-        minimal_stake = int(constants["minimal_stake"])
-        print(
-            tenderbake.run(
-                constants,
-                total_active_stake,
-                cycles=args.cycles,
-                confidence=0.9,
-                full_balance=args.full_balance,
-                delegated_balance=args.delegated_balance,
-                eligibility_threshold=minimal_stake,
-            )
+    minimal_stake = int(constants["minimal_stake"])
+    print(
+        tenderbake.run(
+            constants,
+            total_active_stake,
+            cycles=args.cycles,
+            confidence=0.9,
+            full_balance=args.full_balance,
+            delegated_balance=args.delegated_balance,
+            eligibility_threshold=minimal_stake,
         )
-    else:
-        print(
-            emmy.run(
-                constants,
-                total_voting_power,
-                cycles=args.cycles,
-                baking_rolls=args.rolls,
-                confidence=args.confidence,
-            )
-        )
+    )
