@@ -51,6 +51,7 @@ const App = () => {
   };
 
   const addError = (error) => {
+    console.error(error);
     setErrors([...errors, error]);
   };
 
